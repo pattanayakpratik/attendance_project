@@ -11,6 +11,7 @@ import base64
 from datetime import datetime, timedelta
 import uuid # For generating unique session codes
 import MySQLdb # For specific error handling
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -231,13 +232,16 @@ def mark_attendance():
     data = request.get_json()
     if not data:
         return jsonify({'message': 'Request payload is missing or not valid JSON.'}), 400
+    
     student_id = data.get('student_id')
     session_id = data.get('session_id')
     lat = data.get('latitude')
     lng = data.get('longitude')
+
     # Validate required fields
     if not all([student_id, session_id, lat, lng]):
         return jsonify({'message': 'Missing required fields in request.'}), 400
+    
     try:
         student_id = int(student_id)
         session_id = int(session_id)
@@ -245,35 +249,63 @@ def mark_attendance():
         lng = float(lng)
     except (ValueError, TypeError):
         return jsonify({'message': 'Invalid data type for student_id, session_id, latitude, or longitude.'}), 400
+
     cur = None
     current_time = datetime.now()
+    
     try:
         cur = mysql.connection.cursor()
-        # Check session existence and expiry
-        cur.execute("SELECT expiry_time FROM session WHERE id = %s", (session_id,))
+        
+        # 1. Fetch Session Expiry AND Location (Dynamic Geofencing)
+        # Assumes session table has 'latitude' and 'longitude' columns
+        cur.execute("SELECT expiry_time, latitude, longitude FROM session WHERE id = %s", (session_id,))
         result = cur.fetchone()
+        
         if not result:
             return jsonify({'message': 'Invalid session ID.'}), 400
-        expiry_time = result[0]
+        
+        expiry_time, session_lat, session_lng = result
+
+        # 2. Check Expiry
         if current_time > expiry_time:
-            status = 'ABSENT'
+            # You might want to return 400 here instead of marking ABSENT
+            # But sticking to your logic:
+            status = 'ABSENT' 
         else:
-            # Compare student's location to default allowed location
-            user_location = (lat, lng)
-            distance_km = geodesic(ALLOWED_LOCATION, user_location).km
-            status = 'PRESENT' if distance_km <= ALLOWED_RADIUS else 'ABSENT'
-        # Check if attendance already marked for this student and session
+            # 3. Check Location (Dynamic)
+            if session_lat is None or session_lng is None:
+                # Fallback: If session has no location, assume PRESENT (or handle error)
+                status = 'PRESENT'
+            else:
+                student_location = (lat, lng)
+                session_location = (session_lat, session_lng)
+                
+                # Calculate distance
+                distance_km = geodesic(session_location, student_location).km
+                
+                # Use a reasonable radius (e.g., 0.1 km = 100 meters)
+                # You can make this configurable per session if needed
+                ALLOWED_RADIUS = 0.1 
+                
+                status = 'PRESENT' if distance_km <= ALLOWED_RADIUS else 'ABSENT'
+
+        # 4. Check Duplicate Attendance
         cur.execute("SELECT id FROM attendance WHERE student_id = %s AND session_id = %s", (student_id, session_id))
         if cur.fetchone():
-            # Optionally, you could update the existing record or simply inform the user.
-            # For now, let's prevent duplicate entries and inform.
             return jsonify({'message': 'Attendance already marked for this session.', 'status': 'already_marked'}), 409
-        # Record attendance
+        
+        # 5. Record Attendance
         cur.execute("""
             INSERT INTO attendance (student_id, session_id, status, timestamp)
             VALUES (%s, %s, %s, %s)
         """, (student_id, session_id, status, current_time))
+        
         mysql.connection.commit()
+        
+        # Return specific message if absent due to location
+        if status == 'ABSENT' and current_time <= expiry_time:
+             return jsonify({'message': 'Attendance marked as ABSENT (Location mismatch).', 'status': status}), 200
+
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in mark_attendance: {e}")
         mysql.connection.rollback()
@@ -281,8 +313,8 @@ def mark_attendance():
     finally:
         if cur:
             cur.close()
+            
     return jsonify({'message': f'Attendance marked as {status}.', 'status': status}), 200
-
 # finalize attendance
 @app.route('/finalize_attendance', methods=['POST'])
 def finalize_attendance():
@@ -842,22 +874,37 @@ def register_user():
     phone = data.get('phone')
     password = data.get('password')
     role = data.get('role')
-    if not name or not email or not phone or not password or not role:
+
+    # Validate inputs BEFORE hashing
+    if not all([name, email, phone, password, role]):
         return jsonify({'message': 'All fields are required!'}), 400
+    
     if role not in ['ADMIN', 'TEACHER']:
         return jsonify({'message': 'Invalid role!'}), 400
-    cur=None
+
+    # Hash the password securely
+    hashed_password = generate_password_hash(password)
+
+    cur = None
     try:
-        cur=mysql.connection.cursor()
-        # check user is exit or not 
+        cur = mysql.connection.cursor()
+        
+        # Check if user already exists
         cur.execute("SELECT email FROM user WHERE email=%s", (email,))
-        existing_user=cur.fetchone()
+        existing_user = cur.fetchone()
         if existing_user:
             return jsonify({'message': 'User already exists with this email, Try another one or login!'}), 400
-        cur.execute("INSERT INTO user (name, email, phone, password, role) VALUES (%s, %s, %s, %s, %s)", (name, email, phone, password, role))
+        
+        # Insert the new user with the HASHED password
+        cur.execute("""
+            INSERT INTO user (name, email, phone, password, role) 
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, email, phone, hashed_password, role))
+        
         mysql.connection.commit()
         new_user_id = cur.lastrowid
         return jsonify({'message': 'User registered successfully!', 'user_id': new_user_id}), 201
+
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in register_user: {e}")
         mysql.connection.rollback()
@@ -873,24 +920,31 @@ def login_user():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
+
+    if not email or not password:
+        return jsonify({'message': 'Email and password are required!'}), 400
+
     cur = None
     try: 
         cur = mysql.connection.cursor()
-        if not email or not password:
-            return jsonify({'message': 'Email and password are required!'}), 400
-        # check if user is exist or not
-        cur.execute("SELECT id,role FROM user WHERE email=%s AND password=%s", (email,password))
+        # Fetch the stored hash, id, and role based on email
+        cur.execute("SELECT id, role, password FROM user WHERE email=%s", (email,))
         user = cur.fetchone()
-        if not user:
+
+        # Check if user exists AND if the password hash matches
+        if user and check_password_hash(user[2], password):
+            user_id = user[0]
+            role = user[1]
+            
+            if role not in ('ADMIN', 'TEACHER'):
+                return jsonify({'message': 'Only admin or teacher can login!'}), 403
+            
+            return jsonify({'message': 'Login successful!', 'user_id': user_id, 'role': role}), 200
+        else:
             return jsonify({'message': 'Invalid credentials! Please use valid information or signup'}), 401
-        # If user exists, check role
-        user_id,role=user
-        if role not in ('ADMIN', 'TEACHER'):
-            return jsonify({'message': 'Only admin or teacher can login!'}), 403
-        return jsonify({'message': 'Login successful!','user_id': user_id, 'role': role}), 200
+
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in login_user: {e}")
-        mysql.connection.rollback()
         return jsonify({'message': 'Failed to login due to a database error.'}), 500
     except Exception as e:
         app.logger.error(f"Unexpected error in login_user: {e}")
@@ -898,6 +952,8 @@ def login_user():
     finally:
         if cur:
             cur.close()
+
+
 
 # delete teacher
 @app.route('/delete_teacher', methods=['DELETE'])
