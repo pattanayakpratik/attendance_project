@@ -107,8 +107,6 @@ def add_session():
     expiry_time_str = data.get('expiry_time')
     created_by = data.get('created_by')
     class_name = data.get('class')
-    
-    # FIX: Extract latitude and longitude from the request
     latitude = data.get('latitude')
     longitude = data.get('longitude')
 
@@ -117,8 +115,8 @@ def add_session():
         "expiry_time": expiry_time_str,
         "created_by": created_by,
         "class": class_name,
-        "latitude": latitude,    # FIX: Make these required fields
-        "longitude": longitude   # FIX: Make these required fields
+        "latitude": latitude,
+        "longitude": longitude
     }
 
     missing_fields = [key for key, value in required_fields.items() if value is None]
@@ -148,10 +146,9 @@ def add_session():
         if not user_role_result or user_role_result[0] not in ('ADMIN', 'TEACHER'):
             return jsonify({'message': 'User not authorized to create sessions.'}), 403
 
-        # Auto-generate a unique session code based on timestamp
-        session_code = f"SESSION_{int(datetime.now().timestamp())}"
+        # FIX: Auto-generate a guaranteed unique session code using uuid
+        session_code = f"SESSION_{uuid.uuid4().hex[:8].upper()}"
 
-        # FIX: Insert latitude and longitude into the database
         cur.execute("""
             INSERT INTO session (session_name, session_code, expiry_time, created_by, class, latitude, longitude)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -174,6 +171,7 @@ def add_session():
         "session_code": session_code
     }), 201
 
+    
 # Generate QR Code
 @app.route('/generate_qr', methods=['POST'])
 def generate_qr():
@@ -908,8 +906,8 @@ def import_students():
     finally:
         if cur:
             cur.close()
-            
-               
+
+
 # register user
 @app.route('/register_user', methods=['POST'])
 def register_user():
