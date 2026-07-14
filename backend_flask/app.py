@@ -42,9 +42,10 @@ def add_student():
 
     student_id = data.get('id')
     name = data.get('name')
-    class_name = data.get('class')  # Assuming JSON key is 'class'
+    class_name = data.get('class')
     email = data.get('email')
     phone = data.get('phone')
+    password = data.get('password') # FIX: Get password from request
     requesting_user_id = data.get('request_id')
 
     required_fields = {
@@ -53,12 +54,16 @@ def add_student():
         "class": class_name,
         "email": email,
         "phone": phone,
+        "password": password, # FIX: Make password required
         "request_id": requesting_user_id
     }
 
     missing_fields = [key for key, value in required_fields.items() if value is None]
     if missing_fields:
         return jsonify({"message": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+
+    # FIX: Hash the password securely
+    hashed_password = generate_password_hash(password)
 
     cur = None
     try:
@@ -76,8 +81,9 @@ def add_student():
         if cur.fetchone():
             return jsonify({'message': f"Student with ID {student_id} already exists."}), 409
 
-        cur.execute("INSERT INTO student (id, name, class, email, phone) VALUES (%s, %s, %s, %s, %s)",
-                    (student_id, name, class_name, email, phone))
+        # FIX: Insert the hashed password
+        cur.execute("INSERT INTO student (id, name, class, email, phone, password) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (student_id, name, class_name, email, phone, hashed_password))
         mysql.connection.commit()
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in add_student: {e}")
@@ -1160,29 +1166,32 @@ def update_teacher():
 @app.route('/student_login', methods=['POST'])
 def student_login():
     data = request.get_json()
-    id = data['id']
-    email = data['email'] # email is used for password
-    if not id or not email:
-        return jsonify({'message': 'id and email are required!'}), 400
+    id = data.get('id')
+    password = data.get('password') # FIX: Use password instead of email
+
+    if not id or not password:
+        return jsonify({'message': 'id and password are required!'}), 400
+        
     try:
         id = int(id)
     except ValueError:
         return jsonify({'message': 'id must be an integer!'}), 400
-    if not isinstance(email, str):
-        return jsonify({'message': 'email must be a string!'}), 400
-    if '@' not in email or '.' not in email:
-        return jsonify({'message': 'email must be a valid email address!'}), 400
+
     cur = None
     try:
         cur = mysql.connection.cursor()
-        # Check if the student exists
+        # FIX: Select the password column as well
         cur.execute("SELECT * FROM student WHERE id = %s", (id,))
         student = cur.fetchone()
+        
         if not student:
             return jsonify({'message': 'Student not found!'}), 404
-        # Check if the email matches
-        if student[3] != email:
-            return jsonify({'message': 'Invalid email address!'}), 401
+            
+        # FIX: Validate using check_password_hash 
+        # (Assuming password is the 6th column, index 5)
+        if not check_password_hash(student[5], password):
+            return jsonify({'message': 'Invalid credentials!'}), 401
+            
         result = {
             'id': student[0],
             'name': student[1],
@@ -1191,6 +1200,7 @@ def student_login():
             'phone': student[4]
         }
         return jsonify({'message': 'Login successful!', 'student': result}), 200
+        
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in student_login: {e}")
         return jsonify({'message': 'Failed to login due to a database error.'}), 500
@@ -1199,8 +1209,7 @@ def student_login():
         return jsonify({'message': 'An unexpected error occurred while logging in.'}), 500
     finally:
         if cur:
-            cur.close()
-    
+            cur.close()  
 
 
 # ================================
