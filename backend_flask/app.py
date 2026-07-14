@@ -832,6 +832,7 @@ def import_students():
         request_id = int(request_id)
     except ValueError:
         return jsonify({'message': 'request_id must be an integer.'}), 400
+        
     cur = None
     try:
         cur = mysql.connection.cursor()
@@ -840,38 +841,63 @@ def import_students():
         user_role_result = cur.fetchone()
         if not user_role_result or user_role_result[0] not in ('ADMIN', 'TEACHER'):
             return jsonify({'message': 'User not authorized to import students.'}), 403
+            
         if 'file' not in request.files:
             return jsonify({'message': 'No file part'}), 400
-        file=request.files['file']
+            
+        file = request.files['file']
         if file.filename == '':
             return jsonify({'message': 'No selected file'}), 400
+            
         if not allowed_file(file.filename):
             return jsonify({'message': 'Invalid file type. Only .xlsx and .xls files are allowed.'}), 400
+            
         filename = secure_filename(file.filename)
-        filepath=os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-        df=pd.read_excel(filepath)
+        
+        df = pd.read_excel(filepath)
         expected_columns = {'id', 'name', 'class', 'email', 'phone'}
         if not expected_columns.issubset(df.columns):
             os.remove(filepath)
             return jsonify({'message': f'Excel file must contain the following columns: {", ".join(expected_columns)}'}), 400
-        student_count=0
+            
+        student_count = 0
         for index, row in df.iterrows():
             id = row['id']
             name = row['name']
-            class_name=row['class']
+            class_name = row['class']
             email = row['email']
-            phone = row['phone']
-            # check student already in  database or not 
+            # Cast phone to string just in case pandas parsed it as an integer/float
+            phone = str(row['phone']).split('.')[0] 
+            
+            # Check if student already in database
             cur.execute("SELECT id FROM student WHERE id = %s", (id,))
-            student=cur.fetchone()
+            student = cur.fetchone()
             if student:
-                continue #skip if student already exists
-            cur.execute("INSERT INTO student (id, name, class, email, phone) VALUES (%s, %s, %s, %s, %s)", (id, name, class_name, email,phone))
+                continue # skip if student already exists
+                
+            # FIX: Use the student's phone number as their default password and hash it
+            default_password = phone
+            hashed_password = generate_password_hash(default_password)
+            
+            # FIX: Insert the hashed password into the database
+            cur.execute("""
+                INSERT INTO student (id, name, class, email, phone, password) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (id, name, class_name, email, phone, hashed_password))
+            
             student_count += 1
+            
         mysql.connection.commit()
         os.remove(filepath)
-        return jsonify({'message': 'Students imported successfully!', 'student_count': student_count}), 201
+        
+        # Update the success message so the admin knows the default password format
+        return jsonify({
+            'message': 'Students imported successfully! Their default password is their phone number.', 
+            'student_count': student_count
+        }), 201
+        
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in import_students: {e}")
         mysql.connection.rollback()
@@ -882,7 +908,8 @@ def import_students():
     finally:
         if cur:
             cur.close()
-    
+            
+               
 # register user
 @app.route('/register_user', methods=['POST'])
 def register_user():
