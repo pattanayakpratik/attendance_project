@@ -171,7 +171,7 @@ def add_session():
         "session_code": session_code
     }), 201
 
-    
+
 # Generate QR Code
 @app.route('/generate_qr', methods=['POST'])
 def generate_qr():
@@ -854,7 +854,14 @@ def import_students():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
-        df = pd.read_excel(filepath)
+        # FIX: Catch corrupted or unreadable Excel files safely
+        try:
+            df = pd.read_excel(filepath)
+        except Exception as e:
+            os.remove(filepath)
+            app.logger.error(f"Pandas failed to read excel file: {e}")
+            return jsonify({'message': 'Failed to read the Excel file. It may be corrupted or empty.'}), 400
+            
         expected_columns = {'id', 'name', 'class', 'email', 'phone'}
         if not expected_columns.issubset(df.columns):
             os.remove(filepath)
@@ -866,20 +873,16 @@ def import_students():
             name = row['name']
             class_name = row['class']
             email = row['email']
-            # Cast phone to string just in case pandas parsed it as an integer/float
             phone = str(row['phone']).split('.')[0] 
             
-            # Check if student already in database
             cur.execute("SELECT id FROM student WHERE id = %s", (id,))
             student = cur.fetchone()
             if student:
-                continue # skip if student already exists
+                continue 
                 
-            # FIX: Use the student's phone number as their default password and hash it
             default_password = phone
             hashed_password = generate_password_hash(default_password)
             
-            # FIX: Insert the hashed password into the database
             cur.execute("""
                 INSERT INTO student (id, name, class, email, phone, password) 
                 VALUES (%s, %s, %s, %s, %s, %s)
@@ -890,7 +893,6 @@ def import_students():
         mysql.connection.commit()
         os.remove(filepath)
         
-        # Update the success message so the admin knows the default password format
         return jsonify({
             'message': 'Students imported successfully! Their default password is their phone number.', 
             'student_count': student_count
@@ -907,7 +909,7 @@ def import_students():
         if cur:
             cur.close()
 
-
+            
 # register user
 @app.route('/register_user', methods=['POST'])
 def register_user():
