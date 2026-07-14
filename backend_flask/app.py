@@ -1034,7 +1034,6 @@ def get_teachers():
         if cur:
             cur.close()
 
-
 # add teacher
 @app.route('/add_teacher', methods=['POST'])
 def add_teacher():
@@ -1044,8 +1043,13 @@ def add_teacher():
     email = data.get('email')
     phone = data.get('phone')
     password = data.get('password')
+    
     if not all([request_id, name, email, phone, password]):
         return jsonify({'message': 'All fields are required!'}), 400
+        
+    # FIX: Hash the password securely before saving
+    hashed_password = generate_password_hash(password)
+    
     cur = None
     try:
         cur = mysql.connection.cursor()
@@ -1054,21 +1058,27 @@ def add_teacher():
         user_role_result = cur.fetchone()
         if not user_role_result or user_role_result[0] != 'ADMIN':
             return jsonify({'message': 'Only admin can add teacher!'}), 403
+            
         # Check if the teacher already exists
         cur.execute("SELECT email FROM user WHERE email = %s", (email,))
         existing_teacher = cur.fetchone()
         if existing_teacher:
             return jsonify({'message': 'Teacher already exists with this email!'}), 400
+            
         # Check if the phone number is already in use
         cur.execute("SELECT phone FROM user WHERE phone = %s", (phone,))
         existing_phone = cur.fetchone()
         if existing_phone:
             return jsonify({'message': 'Phone number already in use!'}), 400
-        # Insert the new teacher into the database
-        cur.execute("INSERT INTO user (name, email, phone, password, role) VALUES (%s, %s, %s, %s, %s)", (name, email, phone, password, 'TEACHER'))
+            
+        # FIX: Insert the new teacher with the hashed_password
+        cur.execute("INSERT INTO user (name, email, phone, password, role) VALUES (%s, %s, %s, %s, %s)", 
+                    (name, email, phone, hashed_password, 'TEACHER'))
         mysql.connection.commit()
+        
         new_teacher_id = cur.lastrowid
         return jsonify({'message': 'Teacher added successfully!', 'teacher_id': new_teacher_id}), 201
+        
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in add_teacher: {e}")
         mysql.connection.rollback()
