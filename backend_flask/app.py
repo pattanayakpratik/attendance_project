@@ -101,12 +101,18 @@ def add_session():
     expiry_time_str = data.get('expiry_time')
     created_by = data.get('created_by')
     class_name = data.get('class')
+    
+    # FIX: Extract latitude and longitude from the request
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
 
     required_fields = {
         "session_name": session_name,
         "expiry_time": expiry_time_str,
         "created_by": created_by,
-        "class": class_name
+        "class": class_name,
+        "latitude": latitude,    # FIX: Make these required fields
+        "longitude": longitude   # FIX: Make these required fields
     }
 
     missing_fields = [key for key, value in required_fields.items() if value is None]
@@ -118,6 +124,13 @@ def add_session():
         datetime.strptime(expiry_time_str, '%Y-%m-%d %H:%M:%S')
     except ValueError:
         return jsonify({"message": "Invalid expiry_time format. Expected YYYY-MM-DD HH:MM:SS"}), 400
+
+    # Validate coordinate types
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except ValueError:
+        return jsonify({"message": "Latitude and longitude must be valid numbers."}), 400
 
     cur = None
     try:
@@ -132,14 +145,14 @@ def add_session():
         # Auto-generate a unique session code based on timestamp
         session_code = f"SESSION_{int(datetime.now().timestamp())}"
 
-        # Insert into database (id will auto-increment)
+        # FIX: Insert latitude and longitude into the database
         cur.execute("""
-            INSERT INTO session (session_name, session_code, expiry_time, created_by, class)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (session_name, session_code, expiry_time_str, created_by, class_name))
+            INSERT INTO session (session_name, session_code, expiry_time, created_by, class, latitude, longitude)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (session_name, session_code, expiry_time_str, created_by, class_name, latitude, longitude))
 
         mysql.connection.commit()
-        session_id_server = cur.lastrowid  # Get the auto-generated id
+        session_id_server = cur.lastrowid 
 
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in add_session: {e}")
@@ -154,7 +167,6 @@ def add_session():
         "session_id": session_id_server,
         "session_code": session_code
     }), 201
-
 
 # Generate QR Code
 @app.route('/generate_qr', methods=['POST'])
