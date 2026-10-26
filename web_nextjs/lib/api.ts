@@ -36,8 +36,44 @@ export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ ok: boolean; status: number; data: T; error?: string }> {
-  const url = `${API_BASE_URL}${endpoint}`;
   const saved = getSavedUser();
+  let finalEndpoint = endpoint;
+  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+
+  if (saved?.id) {
+    if (isGet) {
+      const sep = finalEndpoint.includes('?') ? '&' : '?';
+      if (!finalEndpoint.includes('request_id=') && !finalEndpoint.includes('id=')) {
+        finalEndpoint = `${finalEndpoint}${sep}request_id=${saved.id}&id=${saved.id}`;
+      } else if (!finalEndpoint.includes('request_id=')) {
+        finalEndpoint = `${finalEndpoint}${sep}request_id=${saved.id}`;
+      } else if (!finalEndpoint.includes('id=')) {
+        finalEndpoint = `${finalEndpoint}${sep}id=${saved.id}`;
+      }
+    }
+  }
+
+  // Inject into JSON body for mutations if not present
+  let finalBody = options.body;
+  if (!isGet && saved?.id && typeof options.body === 'string') {
+    try {
+      const parsed = JSON.parse(options.body);
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        if (parsed.request_id === undefined && parsed.requesting_user_id === undefined) {
+          parsed.request_id = saved.id;
+          parsed.requesting_user_id = saved.id;
+        }
+        if (parsed.created_by === undefined) {
+          parsed.created_by = saved.id;
+        }
+        finalBody = JSON.stringify(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const url = `${API_BASE_URL}${finalEndpoint}`;
 
   const authHeaders: Record<string, string> = {};
   if (saved?.token) {
@@ -47,6 +83,7 @@ export async function apiRequest<T = any>(
   try {
     const res = await fetch(url, {
       ...options,
+      body: finalBody,
       headers: {
         'Content-Type': 'application/json',
         ...authHeaders,

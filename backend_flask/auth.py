@@ -74,3 +74,44 @@ def require_auth(roles=None):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def get_auth_user_from_request():
+    """
+    Extract user_id and role from Authorization Bearer token, token param,
+    query parameters (request_id, id), or JSON payload.
+    """
+    # 1. Check Authorization Bearer header
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        payload = verify_auth_token(token)
+        if payload:
+            return payload.get('user_id'), payload.get('role')
+
+    # 2. Check token in query
+    token = request.args.get('token')
+    if token:
+        payload = verify_auth_token(token)
+        if payload:
+            return payload.get('user_id'), payload.get('role')
+
+    # 3. Check query parameters
+    raw_id = request.args.get('request_id') or request.args.get('id') or request.args.get('requesting_user_id')
+    if raw_id is not None:
+        try:
+            return int(raw_id), None
+        except (ValueError, TypeError):
+            pass
+
+    # 4. Check JSON payload if present
+    if request.is_json:
+        try:
+            body = request.get_json(silent=True) or {}
+            raw_id = body.get('request_id') or body.get('requesting_user_id') or body.get('created_by') or body.get('id')
+            if raw_id is not None:
+                return int(raw_id), None
+        except Exception:
+            pass
+
+    return None, None
