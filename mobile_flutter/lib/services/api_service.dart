@@ -5,6 +5,15 @@ import '../models/session_model.dart';
 import 'storage_service.dart';
 
 class ApiService {
+  static Future<Map<String, String>> _getHeaders() async {
+    final user = await StorageService.getUser();
+    final headers = {'Content-Type': 'application/json'};
+    if (user?.token != null && user!.token!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${user.token}';
+    }
+    return headers;
+  }
+
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -21,6 +30,7 @@ class ApiService {
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'email': email.trim(),
+              'id': email.trim(),
               'password': password.trim(),
             }),
           )
@@ -29,6 +39,8 @@ class ApiService {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         UserModel user;
+        final token = data['token'] as String?;
+
         if (role == UserRole.student) {
           user = UserModel(
             id: data['student_id'] is int ? data['student_id'] : int.tryParse(data['student_id'].toString()) ?? 1,
@@ -37,6 +49,7 @@ class ApiService {
             phone: data['phone'] ?? '',
             role: UserRole.student,
             studentClass: data['class'] ?? 'Class 10',
+            token: token,
           );
         } else {
           user = UserModel(
@@ -45,6 +58,7 @@ class ApiService {
             email: email,
             phone: data['phone'] ?? '',
             role: role,
+            token: token,
           );
         }
         await StorageService.saveUser(user);
@@ -65,12 +79,13 @@ class ApiService {
   }) async {
     final baseUrl = await StorageService.getBaseUrl();
     final url = Uri.parse('$baseUrl/mark_attendance');
+    final headers = await _getHeaders();
 
     try {
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: jsonEncode({
               'student_id': studentId,
               'session_id': sessionId,
@@ -94,9 +109,10 @@ class ApiService {
   static Future<List<SessionModel>> getSessions() async {
     final baseUrl = await StorageService.getBaseUrl();
     final url = Uri.parse('$baseUrl/get_sessions');
+    final headers = await _getHeaders();
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List list = data['sessions'] ?? (data is List ? data : []);
@@ -111,9 +127,10 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getStudents() async {
     final baseUrl = await StorageService.getBaseUrl();
     final url = Uri.parse('$baseUrl/get_all_student');
+    final headers = await _getHeaders();
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List list = data['students'] ?? (data is List ? data : []);
@@ -128,9 +145,10 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getTeachers() async {
     final baseUrl = await StorageService.getBaseUrl();
     final url = Uri.parse('$baseUrl/get_teachers');
+    final headers = await _getHeaders();
 
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List list = data['teachers'] ?? (data is List ? data : []);
@@ -151,12 +169,13 @@ class ApiService {
   }) async {
     final baseUrl = await StorageService.getBaseUrl();
     final url = Uri.parse('$baseUrl/add_teacher');
+    final headers = await _getHeaders();
 
     try {
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: jsonEncode({
               'name': name,
               'email': email,
@@ -185,12 +204,13 @@ class ApiService {
   }) async {
     final baseUrl = await StorageService.getBaseUrl();
     final url = Uri.parse('$baseUrl/add_student');
+    final headers = await _getHeaders();
 
     try {
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: jsonEncode({
               'id': id,
               'name': name,
