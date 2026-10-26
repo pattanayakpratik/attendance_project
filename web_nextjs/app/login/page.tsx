@@ -48,6 +48,7 @@ export default function LoginPage() {
         email: email,
         role: selectedRole,
         class: data.class || 'Class 10',
+        token: data.token,
       });
       router.push('/dashboard');
     } else {

@@ -43,6 +43,7 @@ class UserModel {
   final String phone;
   final UserRole role;
   final String? studentClass;
+  final String? token;
 
   UserModel({
     required this.id,
@@ -51,6 +52,7 @@ class UserModel {
     required this.phone,
     required this.role,
     this.studentClass,
+    this.token,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {UserRole? defaultRole}) {
@@ -63,6 +65,7 @@ class UserModel {
           ? UserRoleExtension.fromString(json['role']) 
           : (defaultRole ?? UserRole.student),
       studentClass: json['class'],
+      token: json['token'],
     );
   }
 
@@ -74,6 +77,7 @@ class UserModel {
       'phone': phone,
       'role': role.apiValue,
       'class': studentClass,
+      'token': token,
     };
   }
 }

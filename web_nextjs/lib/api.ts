@@ -8,6 +8,7 @@ export interface UserSession {
   role: 'ADMIN' | 'TEACHER' | 'STUDENT';
   phone?: string;
   class?: string;
+  token?: string;
 }
 
 export function getSavedUser(): UserSession | null {
@@ -36,11 +37,19 @@ export async function apiRequest<T = any>(
   options: RequestInit = {}
 ): Promise<{ ok: boolean; status: number; data: T; error?: string }> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const saved = getSavedUser();
+
+  const authHeaders: Record<string, string> = {};
+  if (saved?.token) {
+    authHeaders['Authorization'] = `Bearer ${saved.token}`;
+  }
+
   try {
     const res = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...(options.headers || {}),
       },
     });

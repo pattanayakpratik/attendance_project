@@ -22,6 +22,7 @@ except ImportError:
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from db_adapter import ResilientMySQL
+from auth import generate_auth_token, verify_auth_token, require_auth
 
 app = Flask(__name__)
 CORS(app)
@@ -29,7 +30,7 @@ CORS(app)
 # Database Configuration with Environment Variables fallback
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', '127.0.0.1')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root')
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '6296930416')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'attendance_app')
 app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', 3306))
 
@@ -995,7 +996,8 @@ def login_user():
             if role not in ('ADMIN', 'TEACHER'):
                 return jsonify({'message': 'Only admin or teacher can login!'}), 403
             
-            return jsonify({'message': 'Login successful!', 'user_id': user_id, 'role': role}), 200
+            token = generate_auth_token(user_id, role)
+            return jsonify({'message': 'Login successful!', 'user_id': user_id, 'role': role, 'token': token}), 200
         else:
             return jsonify({'message': 'Invalid credentials! Please use valid information or signup'}), 401
 
@@ -1203,23 +1205,20 @@ def update_teacher():
 # student login
 @app.route('/student_login', methods=['POST'])
 def student_login():
-    data = request.get_json()
-    id = data.get('id')
-    password = data.get('password') # FIX: Use password instead of email
+    data = request.get_json() or {}
+    ident = str(data.get('id') or data.get('email') or '').strip()
+    password = data.get('password')
 
-    if not id or not password:
-        return jsonify({'message': 'id and password are required!'}), 400
-        
-    try:
-        id = int(id)
-    except ValueError:
-        return jsonify({'message': 'id must be an integer!'}), 400
+    if not ident or not password:
+        return jsonify({'message': 'Student ID or Email, and password are required!'}), 400
 
     cur = None
     try:
         cur = mysql.connection.cursor()
-        # FIX: Select the password column as well
-        cur.execute("SELECT * FROM student WHERE id = %s", (id,))
+        if ident.isdigit():
+            cur.execute("SELECT * FROM student WHERE id = %s", (int(ident),))
+        else:
+            cur.execute("SELECT * FROM student WHERE email = %s", (ident,))
         student = cur.fetchone()
         
         if not student:
@@ -1237,7 +1236,8 @@ def student_login():
             'email': student[3],
             'phone': student[4]
         }
-        return jsonify({'message': 'Login successful!', 'student': result}), 200
+        token = generate_auth_token(student[0], 'STUDENT', name=student[1])
+        return jsonify({'message': 'Login successful!', 'student': result, 'student_id': student[0], 'name': student[1], 'class': student[2], 'token': token}), 200
         
     except MySQLdb.Error as e:
         app.logger.error(f"Database error in student_login: {e}")
