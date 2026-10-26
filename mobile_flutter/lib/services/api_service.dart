@@ -108,7 +108,8 @@ class ApiService {
 
   static Future<List<SessionModel>> getSessions() async {
     final baseUrl = await StorageService.getBaseUrl();
-    final url = Uri.parse('$baseUrl/get_sessions');
+    final user = await StorageService.getUser();
+    final url = Uri.parse('$baseUrl/get_sessions?request_id=${user?.id ?? 1}&id=${user?.id ?? 1}');
     final headers = await _getHeaders();
 
     try {
@@ -126,7 +127,8 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> getStudents() async {
     final baseUrl = await StorageService.getBaseUrl();
-    final url = Uri.parse('$baseUrl/get_all_student');
+    final user = await StorageService.getUser();
+    final url = Uri.parse('$baseUrl/get_all_student?request_id=${user?.id ?? 1}&id=${user?.id ?? 1}');
     final headers = await _getHeaders();
 
     try {
@@ -144,7 +146,8 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> getTeachers() async {
     final baseUrl = await StorageService.getBaseUrl();
-    final url = Uri.parse('$baseUrl/get_teachers');
+    final user = await StorageService.getUser();
+    final url = Uri.parse('$baseUrl/get_teachers?request_id=${user?.id ?? 1}&id=${user?.id ?? 1}');
     final headers = await _getHeaders();
 
     try {
