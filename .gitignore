@@ -6,6 +6,8 @@
 *.swp
 *.bak
 .vscode/
+bin/
+*.exe
 
 # Backend (Python / Flask)
 backend_flask/.venv/
