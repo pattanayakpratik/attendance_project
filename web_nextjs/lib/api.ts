@@ -62,11 +62,18 @@ export async function apiRequest<T = any>(
       error: res.ok ? undefined : data.message || 'Request failed',
     };
   } catch (err: any) {
+    const isNetworkError =
+      err?.message === 'Failed to fetch' ||
+      err?.name === 'TypeError' ||
+      err?.code === 'ECONNREFUSED';
+
     return {
       ok: false,
       status: 0,
       data: {} as T,
-      error: err.message || 'Unable to connect to backend server',
+      error: isNetworkError
+        ? 'Backend server is not running on http://127.0.0.1:5000. Please start the Flask backend or click "Continue as a guest".'
+        : err.message || 'Unable to connect to backend server',
     };
   }
 }
