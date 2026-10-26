@@ -1,5 +1,7 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, request, jsonify
-from flask_mysqldb import MySQL
 from flask_cors import CORS
 from geopy.distance import geodesic
 from werkzeug.utils import secure_filename
@@ -9,20 +11,29 @@ import qrcode
 import io
 import base64
 from datetime import datetime, timedelta
-import uuid # For generating unique session codes
-import MySQLdb # For specific error handling
+import uuid
+
+try:
+    import MySQLdb
+except ImportError:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    import MySQLdb
+
 from werkzeug.security import generate_password_hash, check_password_hash
+from db_adapter import ResilientMySQL
 
 app = Flask(__name__)
 CORS(app)
 
-# MySQL config
-app.config['MYSQL_HOST'] = '127.0.0.1'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = '6296930416'
-app.config['MYSQL_DB'] = 'attendance_app'
+# Database Configuration with Environment Variables fallback
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', '127.0.0.1')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '6296930416')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'attendance_app')
+app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', 3306))
 
-mysql = MySQL(app)
+mysql = ResilientMySQL(app)
 
 # Example: Allowed location (your campus)
 ALLOWED_LOCATION = (20.2961, 85.8245)  # lat, lng
