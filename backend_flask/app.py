@@ -1928,10 +1928,9 @@ def register_user():
 
         # Enforce Permissions
         if role == 'ADMIN':
-            if requester_role != 'SUPERADMIN':
-                return jsonify({
-                    'message': 'Forbidden: Campus Admins cannot self-signup. They must be provisioned by the Platform Master Owner.'
-                }), 403
+            return jsonify({
+                'message': 'Campus Admins must register their institute to sign up. Please use the institute registration portal.'
+            }), 400
         elif role == 'TEACHER':
             if requester_role not in ('ADMIN', 'SUPERADMIN'):
                 return jsonify({
@@ -2622,8 +2621,16 @@ def get_institutes():
 @app.route('/register_institute', methods=['POST'])
 def register_institute():
     """
-    Onboard a brand new Institute / School / College.
-    Strictly restricted to the Platform Master Owner (SUPERADMIN).
+    Onboard a brand new Institute and its Founding Campus Administrator.
+    Can be called by:
+    1. A new Admin registering their institute (Admin must register an institute to signup).
+    2. Platform Master Owner (SUPERADMIN) to onboard institutes from the master console.
+    
+    Security & Multi-Tenant Rules:
+    - Admin signup MUST register an institute. Admin cannot exist without their institute.
+    - Institute Code is strictly unique. No other admin can register or overwrite an existing institute.
+    - Institute Name is strictly unique.
+    - Admin Email must be unique across all users and students.
     """
     user_id, token_role = get_auth_user_from_request()
     cur = None
@@ -2636,9 +2643,10 @@ def register_institute():
             if r:
                 requester_role = r[0]
 
-        if requester_role != 'SUPERADMIN':
+        # If an existing session is passed, only SUPERADMIN or ADMIN can onboard
+        if requester_role and requester_role not in ('SUPERADMIN', 'ADMIN'):
             return jsonify({
-                'message': 'Forbidden: Only the Platform Master Owner can onboard new institutes and assign campus administrators.'
+                'message': 'Forbidden: Only administrators can register an institute.'
             }), 403
     except Exception as e:
         if cur:
@@ -2653,35 +2661,54 @@ def register_institute():
     code = (data.get('code') or '').strip().upper()
     address = (data.get('address') or '').strip()
     admin_name = (data.get('admin_name') or '').strip()
-    admin_email = (data.get('admin_email') or '').strip()
+    admin_email = (data.get('admin_email') or '').strip().lower()
     admin_password = (data.get('admin_password') or '').strip()
     admin_phone = (data.get('admin_phone') or '+91 0000000000').strip()
 
     if not name or not code or not admin_email or not admin_password:
-        return jsonify({'message': 'Institute name, code, admin_email, and admin_password are required!'}), 400
+        return jsonify({'message': 'Institute name, code, admin email, and admin password are all required!'}), 400
 
     cur = None
     try:
         cur = mysql.connection.cursor()
-        # Check if code or email already exists
-        cur.execute("SELECT id FROM institute WHERE code = %s", (code,))
-        if cur.fetchone():
-            return jsonify({'message': f'Institute code "{code}" already exists!'}), 409
 
+        # 1. Enforce unique Institute Code (No other admin can register an existing institute)
+        cur.execute("SELECT id, name FROM institute WHERE UPPER(code) = %s", (code,))
+        existing_code = cur.fetchone()
+        if existing_code:
+            return jsonify({
+                'message': f'Institute code "{code}" is already registered by another admin! You cannot register another admin\'s institute.'
+            }), 409
+
+        # 2. Enforce unique Institute Name
+        cur.execute("SELECT id, code FROM institute WHERE LOWER(name) = LOWER(%s)", (name,))
+        existing_name = cur.fetchone()
+        if existing_name:
+            return jsonify({
+                'message': f'Institute "{name}" is already registered by another admin! You cannot register another admin\'s institute.'
+            }), 409
+
+        # 3. Enforce unique Admin Email in user table
         cur.execute("SELECT id FROM user WHERE email = %s", (admin_email,))
         if cur.fetchone():
-            return jsonify({'message': f'Email "{admin_email}" is already registered!'}), 409
+            return jsonify({'message': f'Email "{admin_email}" is already registered! Please sign in with your password.'}), 409
+
+        # 4. Enforce unique Admin Email in student table
+        cur.execute("SELECT id FROM student WHERE email = %s", (admin_email,))
+        if cur.fetchone():
+            return jsonify({'message': f'Email "{admin_email}" is already registered as a student!'}), 409
 
         # Insert Institute
         cur.execute("""
             INSERT INTO institute (name, code, address)
             VALUES (%s, %s, %s)
-        """, (name, code, address))
+        """, (name, code, address or f"Campus of {name}"))
         mysql.connection.commit()
 
         # Retrieve new institute id
         cur.execute("SELECT id FROM institute WHERE code = %s", (code,))
-        inst_id = cur.fetchone()[0]
+        inst_row = cur.fetchone()
+        inst_id = inst_row[0]
 
         # Insert Admin User
         hashed_pw = generate_password_hash(admin_password)
@@ -2691,10 +2718,11 @@ def register_institute():
         """, (admin_name or f"{name} Admin", admin_email, admin_phone, hashed_pw, inst_id))
         mysql.connection.commit()
 
-        token = generate_auth_token(cur.lastrowid or 1, 'ADMIN', name=admin_name, institute_id=inst_id)
+        admin_id = cur.lastrowid or 1
+        token = generate_auth_token(admin_id, 'ADMIN', name=admin_name or f"{name} Admin", institute_id=inst_id)
 
         return jsonify({
-            'message': 'Institute registered successfully!',
+            'message': f'Institute "{name}" registered successfully! Welcome to your admin dashboard.',
             'institute': {
                 'id': inst_id,
                 'name': name,
@@ -2702,11 +2730,19 @@ def register_institute():
                 'address': address
             },
             'admin': {
-                'name': admin_name,
+                'id': admin_id,
+                'name': admin_name or f"{name} Admin",
                 'email': admin_email,
                 'role': 'ADMIN'
             },
-            'token': token
+            'user_id': admin_id,
+            'token': token,
+            'role': 'ADMIN',
+            'name': admin_name or f"{name} Admin",
+            'email': admin_email,
+            'institute_id': inst_id,
+            'institute_name': name,
+            'institute_code': code
         }), 201
 
     except Exception as e:
