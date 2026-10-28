@@ -39,8 +39,8 @@ export default function SessionsPage() {
   const [newSessionName, setNewSessionName] = useState('');
   const [newClass, setNewClass] = useState('Class 10');
   const [durationMinutes, setDurationMinutes] = useState(45);
-  const [latitude, setLatitude] = useState('20.296100');
-  const [longitude, setLongitude] = useState('85.824500');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [detectingGps, setDetectingGps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -136,6 +136,10 @@ export default function SessionsPage() {
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!latitude || !longitude || isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+      alert('Please enter valid Latitude & Longitude coordinates or click "Auto-Detect Current GPS".');
+      return;
+    }
     const user = getSavedUser();
     setIsSubmitting(true);
 
@@ -352,7 +356,7 @@ export default function SessionsPage() {
                     type="text"
                     value={latitude}
                     onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="Latitude"
+                    placeholder="Latitude (e.g. 20.2961)"
                     required
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs font-mono text-slate-900 dark:text-slate-100"
                   />
@@ -360,12 +364,14 @@ export default function SessionsPage() {
                     type="text"
                     value={longitude}
                     onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="Longitude"
+                    placeholder="Longitude (e.g. 85.8245)"
                     required
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs font-mono text-slate-900 dark:text-slate-100"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Students must be within 100 meters to be marked PRESENT.</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                  Custom coordinates set the geofence location for this session. Students must be within 100m to mark attendance.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4">

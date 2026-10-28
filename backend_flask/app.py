@@ -76,7 +76,7 @@ mysql = ResilientMySQL(app)
 
 # Example: Allowed location (your campus)
 
-ALLOWED_LOCATION = (20.2961, 85.8245)  # lat, lng
+# Geofence location is dynamic: entered by Admin / Teacher per session
 
 ALLOWED_RADIUS = 0.1  # in km
 
