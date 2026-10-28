@@ -38,3 +38,7 @@ mobile_flutter/ios/.symlinks/
 mobile_flutter/ios/Flutter/Flutter.framework
 mobile_flutter/ios/Flutter/Flutter.podspec
 mobile_flutter/windows/flutter/ephemeral/
+
+# Next.js agent docs
+web_nextjs/AGENTS.md
+AGENTS.md

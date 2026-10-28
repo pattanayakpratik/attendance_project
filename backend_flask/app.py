@@ -57,7 +57,14 @@ from auth import generate_auth_token, verify_auth_token, require_auth, get_auth_
 
 app = Flask(__name__)
 
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    return response
 
 
 
@@ -2945,20 +2952,6 @@ def student_login():
 
 
 
-
-
-# ================================
-
-# Run the App
-
-# ================================
-
-if __name__ == '__main__':
-
-    app.run(debug=True)
-
-
-
 # ==========================================
 # Multi-Institute Management Routes
 # ==========================================
@@ -3311,8 +3304,10 @@ def master_all_users():
 # Timetable Management Routes
 # ==========================================
 
-@app.route('/get_timetable', methods=['GET'])
+@app.route('/get_timetable', methods=['GET', 'OPTIONS'])
 def get_timetable():
+    if request.method == 'OPTIONS':
+        return ('', 204)
     """
     Role-based Timetable view:
     - STUDENT: Sees ONLY their class's timetable.
@@ -3496,8 +3491,10 @@ def get_timetable():
             cur.close()
 
 
-@app.route('/add_timetable_slot', methods=['POST'])
+@app.route('/add_timetable_slot', methods=['POST', 'OPTIONS'])
 def add_timetable_slot():
+    if request.method == 'OPTIONS':
+        return ('', 204)
     """
     Creates a new timetable slot.
     Allowed for ADMIN, TEACHER, and SUPERADMIN.
@@ -3570,8 +3567,10 @@ def add_timetable_slot():
             cur.close()
 
 
-@app.route('/delete_timetable_slot', methods=['DELETE', 'POST'])
+@app.route('/delete_timetable_slot', methods=['DELETE', 'POST', 'OPTIONS'])
 def delete_timetable_slot():
+    if request.method == 'OPTIONS':
+        return ('', 204)
     """
     Deletes a timetable slot.
     Allowed for Admin or the assigned Teacher.
@@ -3613,3 +3612,8 @@ def delete_timetable_slot():
     finally:
         if cur:
             cur.close()
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='127.0.0.1', port=port, debug=True)

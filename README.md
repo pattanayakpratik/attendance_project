@@ -60,6 +60,32 @@ An enterprise-ready, cross-platform institutional attendance and timetable manag
 
 ---
 
+## 📸 Screenshots & UI Showcase
+
+A clean visual overview of the operational web platform with Supabase PostgreSQL cloud sync:
+
+| 01. Unified Multi-Role Authentication | 02. Executive Campus Dashboard |
+|:---:|:---:|
+| ![Login Screen](docs/screenshots/01_login_screen.png) | ![Dashboard Hub](docs/screenshots/02_dashboard_hub.png) |
+| *Role tabs (Admin / Teacher / Student) with JWT auth & secure guest browsing* | *Real-time campus KPIs, session counter, attendance %, and quick actions* |
+
+| 03. Master Weekly Timetable Matrix (Fixed Indian Schedule) | 04. Dynamic QR Projector & GPS Geofencing |
+|:---:|:---:|
+| ![Timetable Matrix](docs/screenshots/03_weekly_timetable_matrix.png) | ![QR Sessions](docs/screenshots/04_sessions_qr_projector.png) |
+| *Fixed Monday-Saturday matrix with 42 slots, faculty, rooms, Recess & Lunch bands* | *Live classroom sessions tracking GPS latitude/longitude and active projector countdown* |
+
+| 05. Student Directory & Progression Engine | 06. Attendance Analytics & Absenteeism |
+|:---:|:---:|
+| ![Student Directory](docs/screenshots/05_students_progression.png) | ![Reports & Analytics](docs/screenshots/06_reports_analytics.png) |
+| *Batch management for Semesters, K-12 Grades, and Coaching Phases with audit log* | *Class-wise absenteeism rate visualization and 1-click CSV report exporting* |
+
+| 07. Student Class-Scoped Timetable (2026-2030 CSE Batch - Sem 2) |
+|:---:|
+| ![Student Timetable Matrix](docs/screenshots/07_student_timetable_matrix.png) |
+| *Role-isolated view strictly displaying 33 class lectures, labs, and institute lunch & recess breaks* |
+
+---
+
 ## 🛠️ Technology Stack
 
 | Layer | Technology | Description |
