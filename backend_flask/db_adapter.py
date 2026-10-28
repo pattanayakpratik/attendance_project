@@ -381,7 +381,12 @@ class ResilientMySQL:
                 created_by INTEGER NOT NULL,
                 class TEXT NOT NULL,
                 latitude REAL,
-                longitude REAL
+                longitude REAL,
+                institute_id INTEGER DEFAULT 1,
+                start_time TEXT DEFAULT CURRENT_TIMESTAMP,
+                end_time TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'ACTIVE'
             )
         ''')
 
