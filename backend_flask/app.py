@@ -110,7 +110,11 @@ def add_student():
 
     name = data.get('name')
 
-    class_name = data.get('class')
+    batch = (data.get('batch') or '').strip()
+    semester = (data.get('semester') or 'Sem 1').strip()
+    class_name = (data.get('class') or '').strip()
+    if not class_name and batch:
+        class_name = f"{batch} - {semester}"
 
     email = data.get('email')
 
@@ -201,8 +205,27 @@ def add_student():
         if not inst_id:
             inst_id = 1
 
-        cur.execute("INSERT INTO student (id, name, class, email, phone, password, institute_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (student_id, name, class_name, email, phone, hashed_password, inst_id))
+        course = (data.get('course') or '').strip()
+        batch = (data.get('batch') or '').strip()
+        semester = (data.get('semester') or 'Sem 1').strip()
+        academic_year = (data.get('academic_year') or '2026-2027').strip()
+
+        if not class_name and batch:
+            class_name = f"{batch} - {semester}"
+        elif not batch and class_name:
+            batch = class_name
+
+        cur.execute("""
+            INSERT INTO student (id, name, class, email, phone, password, institute_id, status, course, batch, semester) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s, %s, %s)
+        """, (student_id, name, class_name, email, phone, hashed_password, inst_id, course, batch, semester))
+
+        # Initialize student_class_history entry
+        cur.execute("""
+            INSERT INTO student_class_history 
+            (student_id, institute_id, course, batch, semester, class_name, academic_year, status, promoted_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s)
+        """, (student_id, inst_id, course, batch, semester, class_name, academic_year, requesting_user_id))
 
         mysql.connection.commit()
 
@@ -979,41 +1002,48 @@ def get_all_student():
                 inst_id = r[0]
 
         filter_status = request.args.get('status')
+        filter_batch = request.args.get('batch')
+        query_conditions = []
+        query_params = []
+
         if inst_id:
-            if filter_status and filter_status.upper() != 'ALL':
-                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student WHERE institute_id = %s AND UPPER(COALESCE(status, 'ACTIVE')) = %s ORDER BY name ASC", (inst_id, filter_status.upper()))
-            else:
-                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student WHERE institute_id = %s ORDER BY name ASC", (inst_id,))
-        else:
-            if filter_status and filter_status.upper() != 'ALL':
-                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student WHERE UPPER(COALESCE(status, 'ACTIVE')) = %s ORDER BY name ASC", (filter_status.upper(),))
-            else:
-                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student ORDER BY name ASC")
+            query_conditions.append("institute_id = %s")
+            query_params.append(inst_id)
+
+        if filter_status and filter_status.upper() != 'ALL':
+            query_conditions.append("UPPER(COALESCE(status, 'ACTIVE')) = %s")
+            query_params.append(filter_status.upper())
+
+        if filter_batch and filter_batch.upper() != 'ALL':
+            query_conditions.append("batch = %s")
+            query_params.append(filter_batch)
+
+        where_clause = f"WHERE {' AND '.join(query_conditions)}" if query_conditions else ""
+        cur.execute(f"""
+            SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE'), 
+                   COALESCE(course, ''), COALESCE(batch, ''), COALESCE(semester, '')
+            FROM student 
+            {where_clause}
+            ORDER BY name ASC
+        """, tuple(query_params))
 
         students = cur.fetchall()
 
         if not students:
-
             return jsonify({'student_count': 0, 'students': []}), 200
 
         response_data = []
-
         for row in students:
-
             response_data.append({
-
                 'id': row[0],
-
                 'name': row[1],
-
                 'class': row[2],
-
                 'email': row[3],
-
                 'phone': row[4],
-
-                'status': row[5] or 'ACTIVE'
-
+                'status': row[5] or 'ACTIVE',
+                'course': row[6] or '',
+                'batch': row[7] or '',
+                'semester': row[8] or ''
             })
 
         return jsonify({'student_count': len(response_data), 'students': response_data}), 200
@@ -2537,6 +2567,205 @@ def update_student_status():
         if cur:
             cur.close()
 
+
+@app.route('/promote_batch', methods=['POST'])
+def promote_batch():
+    """
+    Batch promotion of a cohort/batch from one semester to the next.
+    Example: '2026-2030 CSE Batch' moving from 'Sem 1' to 'Sem 2'.
+    
+    Security & Multi-Tenant Rules:
+    - Only Campus Admin or Teacher of that institute can promote.
+    - Previous semester record is marked as COMPLETED in student_class_history.
+    - All past attendance records from Sem 1 are 100% frozen and preserved.
+    - New active semester record created in student_class_history.
+    - Student's active class updated to '{batch} - {to_semester}'.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    data = request.get_json() or {}
+    student_ids = data.get('student_ids') or []
+    batch = (data.get('batch') or '').strip()
+    course = (data.get('course') or '').strip()
+    from_semester = (data.get('from_semester') or '').strip()
+    to_semester = (data.get('to_semester') or '').strip()
+    academic_year = (data.get('academic_year') or '2026-2027').strip()
+
+    if not student_ids or not to_semester:
+        return jsonify({'message': 'student_ids and to_semester are required for batch promotion!'}), 400
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        requester_role = token_role
+        requester_inst_id = get_auth_institute_id()
+        if not requester_role and user_id:
+            cur.execute("SELECT role, institute_id FROM user WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            if r:
+                requester_role = r[0]
+                if not requester_inst_id:
+                    requester_inst_id = r[1]
+
+        if requester_role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
+            return jsonify({'message': 'Forbidden: Only administrators and teachers can promote batches.'}), 403
+
+        target_class_name = f"{batch} - {to_semester}" if batch else to_semester
+        promoted_count = 0
+
+        for sid in student_ids:
+            cur.execute("SELECT id, name, institute_id, class, COALESCE(course, ''), COALESCE(batch, ''), COALESCE(semester, '') FROM student WHERE id = %s", (sid,))
+            st = cur.fetchone()
+            if not st:
+                continue
+
+            st_inst = st[2]
+            if requester_role != 'SUPERADMIN' and requester_inst_id and st_inst and requester_inst_id != st_inst:
+                continue
+
+            current_course = course or st[4]
+            current_batch = batch or st[5] or st[3]
+            old_semester = from_semester or st[6] or 'Sem 1'
+
+            # 1. Archive previous semester history as COMPLETED
+            cur.execute("""
+                UPDATE student_class_history 
+                SET status = 'COMPLETED' 
+                WHERE student_id = %s AND status = 'ACTIVE'
+            """, (sid,))
+
+            # 2. Insert new semester history as ACTIVE
+            cur.execute("""
+                INSERT INTO student_class_history 
+                (student_id, institute_id, course, batch, semester, class_name, academic_year, status, promoted_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'ACTIVE', %s)
+            """, (sid, st_inst, current_course, current_batch, to_semester, target_class_name, academic_year, user_id or 1))
+
+            # 3. Update student table active class, course, batch, and semester
+            cur.execute("""
+                UPDATE student 
+                SET class = %s, course = %s, batch = %s, semester = %s
+                WHERE id = %s
+            """, (target_class_name, current_course, current_batch, to_semester, sid))
+
+            promoted_count += 1
+
+        mysql.connection.commit()
+
+        return jsonify({
+            'message': f'Successfully promoted {promoted_count} students to {to_semester} ({target_class_name})! All past semester attendance records are permanently preserved.',
+            'promoted_count': promoted_count,
+            'batch': batch,
+            'to_semester': to_semester,
+            'target_class': target_class_name
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in promote_batch: {e}")
+        mysql.connection.rollback()
+        return jsonify({'message': f'Failed to promote batch: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+@app.route('/student_history', methods=['GET'])
+def get_student_history():
+    """
+    Get full semester progression timeline and historical attendance for a student.
+    """
+    student_id = request.args.get('student_id')
+    if not student_id:
+        return jsonify({'message': 'student_id is required!'}), 400
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            SELECT id, course, batch, semester, class_name, academic_year, status, promoted_at
+            FROM student_class_history
+            WHERE student_id = %s
+            ORDER BY id ASC
+        """, (int(student_id),))
+        rows = cur.fetchall()
+
+        history = []
+        for r in rows:
+            cls_name = r[4]
+            sem_name = r[3] or ''
+
+            cur.execute("""
+                SELECT COUNT(a.id)
+                FROM attendance a
+                JOIN session s ON a.session_id = s.id
+                WHERE a.student_id = %s AND (s.class = %s OR s.class LIKE %s)
+            """, (int(student_id), cls_name, f"%{sem_name}%"))
+            attended = cur.fetchone()[0] or 0
+
+            cur.execute("""
+                SELECT COUNT(id)
+                FROM session
+                WHERE class = %s OR class LIKE %s
+            """, (cls_name, f"%{sem_name}%"))
+            total_sessions = cur.fetchone()[0] or 0
+
+            att_pct = round((attended / total_sessions * 100), 1) if total_sessions > 0 else 100.0
+
+            history.append({
+                'history_id': r[0],
+                'course': r[1] or '',
+                'batch': r[2] or '',
+                'semester': sem_name,
+                'class_name': cls_name,
+                'academic_year': r[5] or '',
+                'status': r[6] or 'ACTIVE',
+                'promoted_at': str(r[7]) if r[7] else '',
+                'attended_sessions': attended,
+                'total_sessions': total_sessions,
+                'attendance_percentage': att_pct
+            })
+
+        return jsonify({'student_id': int(student_id), 'history': history}), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in get_student_history: {e}")
+        return jsonify({'message': f'Failed to get student history: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+@app.route('/get_batches', methods=['GET'])
+def get_batches():
+    """
+    Returns unique courses and batches for the institute (e.g. '2026-2030 CSE Batch').
+    """
+    inst_id = get_auth_institute_id()
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        if inst_id:
+            cur.execute("""
+                SELECT DISTINCT batch, course 
+                FROM student 
+                WHERE institute_id = %s AND batch IS NOT NULL AND batch != ''
+                ORDER BY batch ASC
+            """, (inst_id,))
+        else:
+            cur.execute("""
+                SELECT DISTINCT batch, course 
+                FROM student 
+                WHERE batch IS NOT NULL AND batch != ''
+                ORDER BY batch ASC
+            """)
+        rows = cur.fetchall()
+        batches = [{'batch': r[0], 'course': r[1] or ''} for r in rows]
+        return jsonify({'batches': batches}), 200
+    except Exception as e:
+        app.logger.error(f"Error in get_batches: {e}")
+        return jsonify({'message': f'Failed to get batches: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
 
 @app.route('/student_login', methods=['POST'])
 
