@@ -9,8 +9,9 @@ class AttendanceStatsScreen extends StatefulWidget {
 }
 
 class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
-  int _selectedTabIndex = 0; // 0: Class Wise, 1: Student Wise
+  int _selectedTabIndex = 0;
 
+  // Mock data matching Screen 6 of the Design Mockup
   final List<Map<String, dynamic>> _classStats = [
     {
       'title': 'Absent',
@@ -38,18 +39,18 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldBg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: AppColors.textMain(context), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Attendance Stats',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.textMain(context),
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -91,18 +92,23 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
 
   Widget _buildSegmentTab(String title, int index) {
     final isSelected = _selectedTabIndex == index;
+    final isDark = AppColors.isDark(context);
+
     return GestureDetector(
       onTap: () => setState(() => _selectedTabIndex = index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
+          color: isSelected
+              ? (isDark ? const Color(0xFF38B2AC) : AppColors.primary)
+              : (isDark ? const Color(0xFF132429) : Colors.white),
           borderRadius: BorderRadius.circular(20),
+          border: isDark && !isSelected ? Border.all(color: const Color(0xFF1E373E)) : null,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.2),
+                    color: (isDark ? const Color(0xFF38B2AC) : AppColors.primary).withOpacity(0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -114,7 +120,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? (isDark ? const Color(0xFF0B1619) : Colors.white) : AppColors.textSub(context),
           ),
         ),
       ),
@@ -124,14 +130,16 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
   Widget _buildStatCard(Map<String, dynamic> item) {
     final double percent = (item['percentage'] as int) / 100.0;
     final Color barColor = item['color'] as Color;
+    final isDark = AppColors.isDark(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF132429) : Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -146,18 +154,18 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
             children: [
               Text(
                 item['title'],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: AppColors.textMain(context),
                 ),
               ),
               Text(
                 '${item['percentage']} %',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: AppColors.textMain(context),
                 ),
               ),
             ],
@@ -170,7 +178,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
             child: LinearProgressIndicator(
               value: percent,
               minHeight: 8,
-              backgroundColor: barColor.withOpacity(0.15),
+              backgroundColor: barColor.withOpacity(isDark ? 0.25 : 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),
@@ -181,16 +189,16 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
             children: [
               Text(
                 item['className'],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSub(context),
                   fontWeight: FontWeight.w500,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: barColor.withOpacity(0.12),
+                  color: barColor.withOpacity(isDark ? 0.25 : 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

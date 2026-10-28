@@ -15,7 +15,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   List<Map<String, dynamic>> _filteredStudents = [];
   bool _isLoading = true;
 
-  // Mock initial demo students matching the mockup design
+  // Mock Students matching Screen 3 of Design Mockup
   final List<Map<String, dynamic>> _mockStudents = [
     {
       'id': 101,
@@ -88,19 +88,21 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldBg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: AppColors.textMain(context), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Student List',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.textMain(context),
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -115,11 +117,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
               // Search input matching design
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF132429) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
+                  border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -128,10 +131,14 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchController,
-                  decoration: const InputDecoration(
-                    icon: Icon(Icons.search, color: AppColors.textMuted),
+                  style: TextStyle(color: AppColors.textMain(context)),
+                  decoration: InputDecoration(
+                    icon: Icon(Icons.search, color: isDark ? const Color(0xFF38B2AC) : AppColors.textMuted),
                     hintText: 'Search',
-                    hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                    hintStyle: TextStyle(
+                      color: isDark ? const Color(0xFF64748B) : AppColors.textMuted,
+                      fontSize: 14,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
@@ -141,12 +148,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
               // Student List
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                    ? Center(child: CircularProgressIndicator(color: isDark ? const Color(0xFF38B2AC) : AppColors.primary))
                     : _filteredStudents.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'No students found',
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: AppColors.textSub(context)),
                             ),
                           )
                         : ListView.separated(
@@ -170,14 +177,16 @@ class _StudentListScreenState extends State<StudentListScreen> {
     final sClass = student['class'] ?? 'Class 10';
     final phone = student['phone'] ?? '';
     final avatarUrl = student['avatar'];
+    final isDark = AppColors.isDark(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF132429) : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -188,13 +197,13 @@ class _StudentListScreenState extends State<StudentListScreen> {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: AppColors.primaryLight,
+            backgroundColor: isDark ? const Color(0xFF1A343B) : AppColors.primaryLight,
             backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
             child: avatarUrl == null
                 ? Text(
                     name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                    style: const TextStyle(
-                      color: AppColors.primary,
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF38B2AC) : AppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
@@ -208,27 +217,27 @@ class _StudentListScreenState extends State<StudentListScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: AppColors.textMain(context),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   sClass,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
+                    color: isDark ? const Color(0xFF38B2AC) : AppColors.textSecondary,
                   ),
                 ),
                 if (phone.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     phone,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textMuted,
+                      color: AppColors.textSub(context),
                     ),
                   ),
                 ],
@@ -236,7 +245,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            icon: Icon(Icons.chevron_right, color: AppColors.textSub(context)),
             onPressed: () {},
           ),
         ],

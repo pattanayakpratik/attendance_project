@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --primary: #2D8885;
@@ -11,12 +13,31 @@
     --present-green: #10B981;
     --background: #F5F7F8;
     --foreground: #1E293B;
+    --card-bg: #FFFFFF;
+    --card-border: #E2E8F0;
+    --muted: #64748B;
+  }
+
+  .dark {
+    --primary: #38B2AC;
+    --primary-dark: #234E52;
+    --primary-light: #162E35;
+    --dark-scanner: #0B171A;
+    --scanner-teal: #4FD1C5;
+    --absent-coral: #F87171;
+    --present-green: #34D399;
+    --background: #0B1619;
+    --foreground: #F1F5F9;
+    --card-bg: #132429;
+    --card-border: #1E373E;
+    --muted: #94A3B8;
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
     min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 

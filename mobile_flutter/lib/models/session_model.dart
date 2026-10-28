@@ -9,6 +9,7 @@ class SessionModel {
   final double? latitude;
   final double? longitude;
   final int? createdBy;
+  final String? createdByName;
 
   SessionModel({
     required this.id,
@@ -19,6 +20,7 @@ class SessionModel {
     this.latitude,
     this.longitude,
     this.createdBy,
+    this.createdByName,
   });
 
   bool get isOpen => DateTime.now().isBefore(expiryTime);
@@ -44,6 +46,7 @@ class SessionModel {
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
       createdBy: json['created_by'] != null ? int.tryParse(json['created_by'].toString()) : null,
+      createdByName: json['created_by_name'] ?? (json['created_by'] != null ? 'Faculty' : null),
     );
   }
 }

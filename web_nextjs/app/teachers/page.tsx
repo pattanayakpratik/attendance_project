@@ -70,17 +70,17 @@ export default function TeachersPage() {
     setIsSubmitting(false);
 
     if (res.ok) {
-      setStatusMsg({ type: 'success', text: 'Teacher added successfully!' });
+      setStatusMsg({ type: 'success', text: 'Teacher account created successfully!' });
       setTimeout(() => {
         setShowAddModal(false);
+        fetchTeachers();
         setName('');
         setEmail('');
         setPhone('');
         setPassword('');
-        fetchTeachers();
       }, 1000);
     } else {
-      // Local fallback for demo
+      // Local fallback
       const newT: Teacher = {
         id: Date.now(),
         name,
@@ -94,19 +94,19 @@ export default function TeachersPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7F8] p-4 sm:p-6 lg:p-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7F8] dark:bg-[#0B1619] p-4 sm:p-6 lg:p-8 transition-colors duration-200">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Teachers List</h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Teachers List</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Faculty members authorized to create attendance sessions and generate dynamic QR codes
             </p>
           </div>
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-[#2D8885] hover:bg-[#236E6C] text-white font-bold text-sm rounded-2xl shadow-lg shadow-teal-700/10 transition"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-[#2D8885] dark:bg-teal-600 hover:bg-[#236E6C] dark:hover:bg-teal-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-teal-700/10 transition"
           >
             <Plus className="w-5 h-5" />
             <span>Add Teacher</span>
@@ -117,39 +117,39 @@ export default function TeachersPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {isLoading ? (
             <div className="col-span-full py-20 text-center">
-              <Loader2 className="w-8 h-8 text-[#2D8885] animate-spin mx-auto" />
-              <p className="text-xs text-slate-400 mt-2 font-medium">Loading faculty members...</p>
+              <Loader2 className="w-8 h-8 text-[#2D8885] dark:text-teal-400 animate-spin mx-auto" />
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium">Loading faculty members...</p>
             </div>
           ) : teachers.length === 0 ? (
-            <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-slate-200">
-              <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">No teachers found</p>
+            <div className="col-span-full bg-white dark:bg-[#132429] rounded-3xl p-12 text-center border border-slate-200 dark:border-[#1E373E]">
+              <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-500 dark:text-slate-400 font-medium">No teachers found</p>
             </div>
           ) : (
             teachers.map((t) => (
               <div
                 key={t.id}
-                className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-4"
+                className="bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-md hover:border-teal-300 dark:hover:border-teal-500/50 transition-all space-y-4"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] text-[#2D8885] flex items-center justify-center font-bold text-xl">
+                  <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] text-[#2D8885] dark:text-teal-300 flex items-center justify-center font-bold text-xl">
                     {t.name ? t.name[0].toUpperCase() : 'T'}
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800 text-base">{t.name}</h3>
-                    <span className="inline-block mt-0.5 px-2.5 py-0.5 rounded-full bg-teal-50 text-[#2D8885] text-[10px] font-bold">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{t.name}</h3>
+                    <span className="inline-block mt-0.5 px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/80 text-[#2D8885] dark:text-teal-300 text-[10px] font-bold">
                       Faculty Member
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-[#1E373E]">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     <span>{t.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     <span>{t.phone || 'Not provided'}</span>
                   </div>
                 </div>
@@ -161,17 +161,17 @@ export default function TeachersPage() {
 
       {/* Add Teacher Modal matching Screen 7 from Design Mockup */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-white">
-            <h2 className="text-2xl font-bold text-slate-800 mb-1">Add Teacher</h2>
-            <p className="text-xs text-slate-500 mb-6">Create a teacher profile with system permissions.</p>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#132429] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-white dark:border-[#1E373E] transition-colors duration-200">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">Add Teacher</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Create a teacher profile with system permissions.</p>
 
             {statusMsg && (
               <div
                 className={`mb-4 p-3 rounded-xl text-xs font-semibold ${
                   statusMsg.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-rose-50 text-rose-700'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                 }`}
               >
                 {statusMsg.text}
@@ -180,50 +180,50 @@ export default function TeachersPage() {
 
             <form onSubmit={handleAddTeacher} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Name</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Dr. John Doe"
                   required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#2D8885]"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-2xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#2D8885] dark:focus:border-teal-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="john.doe@school.com"
                   required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#2D8885]"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-2xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#2D8885] dark:focus:border-teal-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Phone</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Phone</label>
                 <input
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 9876543210"
                   required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#2D8885]"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-2xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#2D8885] dark:focus:border-teal-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#2D8885]"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-2xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885] dark:focus:border-teal-400"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export default function TeachersPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-[#2D8885] hover:bg-[#236E6C] text-white font-bold rounded-full shadow-lg shadow-teal-700/20 text-sm tracking-wider uppercase transition flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-[#2D8885] dark:bg-teal-600 hover:bg-[#236E6C] dark:hover:bg-teal-500 text-white font-bold rounded-full shadow-lg shadow-teal-700/20 text-sm tracking-wider uppercase transition flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -245,7 +245,7 @@ export default function TeachersPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600 font-semibold"
+                  className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 font-semibold"
                 >
                   Cancel
                 </button>
