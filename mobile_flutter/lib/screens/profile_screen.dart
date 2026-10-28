@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import 'login_screen.dart';
@@ -19,12 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final dark = await StorageService.isDarkMode();
-    setState(() => _isDarkMode = dark);
+    _isDarkMode = ThemeController.isDarkMode;
   }
 
   Future<void> _handleLogout() async {
@@ -41,9 +37,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = widget.user;
+    final isDark = AppColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: isDark ? const Color(0xFF0D2024) : AppColors.primary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -61,8 +58,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {},
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: Colors.white),
+            tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            onPressed: () async {
+              final next = !isDark;
+              setState(() => _isDarkMode = next);
+              await ThemeController.toggleTheme(next);
+            },
           ),
         ],
       ),
@@ -79,11 +81,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 46,
-                      backgroundColor: Colors.white,
+                      backgroundColor: Colors.white.withOpacity(0.9),
                       child: CircleAvatar(
                         radius: 42,
-                        backgroundColor: AppColors.primaryLight,
-                        child: const Icon(Icons.person, size: 48, color: AppColors.primary),
+                        backgroundColor: isDark ? const Color(0xFF162B31) : AppColors.primaryLight,
+                        child: Icon(Icons.person, size: 48, color: isDark ? AppColors.scannerTeal : AppColors.primary),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -103,11 +105,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        user.role.name,
+                        user.role.name.toUpperCase(),
                         style: const TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           color: Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -120,11 +123,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF132429) : Colors.white,
                   borderRadius: BorderRadius.circular(24),
+                  border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
                       blurRadius: 15,
                       offset: const Offset(0, 4),
                     ),
@@ -133,33 +137,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoItem('Email', user.email),
-                    const Divider(height: 24, color: AppColors.borderLight),
-                    _buildInfoItem('Phone', user.phone.isNotEmpty ? user.phone : '+91 9876543210'),
-                    const Divider(height: 24, color: AppColors.borderLight),
-                    _buildInfoItem('Password', '••••••••••'),
+                    _buildInfoItem(context, 'Email', user.email),
+                    Divider(height: 24, color: isDark ? const Color(0xFF1E373E) : AppColors.borderLight),
+                    _buildInfoItem(context, 'Phone', user.phone.isNotEmpty ? user.phone : '+91 9876543210'),
+                    Divider(height: 24, color: isDark ? const Color(0xFF1E373E) : AppColors.borderLight),
+                    _buildInfoItem(context, 'Password', '••••••••••'),
                   ],
                 ),
               ),
               const SizedBox(height: 18),
 
-              // Dark Mode Toggle Row matching mockup
+              // Dark Mode Toggle Row matching mockup Screen 8
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
+                  color: isDark ? const Color(0xFF132429) : Colors.white.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(20),
+                  border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Dark Mode',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          isDark ? Icons.dark_mode : Icons.light_mode,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Dark Mode',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                     Switch.adaptive(
                       value: _isDarkMode,
@@ -167,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       activeTrackColor: AppColors.scannerTeal,
                       onChanged: (val) async {
                         setState(() => _isDarkMode = val);
-                        await StorageService.setDarkMode(val);
+                        await ThemeController.toggleTheme(val);
                       },
                     ),
                   ],
@@ -206,25 +221,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoItem(String label, String value) {
+  Widget _buildInfoItem(BuildContext context, String label, String value) {
+    final isDark = AppColors.isDark(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppColors.textMuted,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
             fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 15,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w600,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? const Color(0xFFF1F5F9) : AppColors.textPrimary,
           ),
         ),
       ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -88,13 +89,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (!mounted) return;
+
     setState(() => _isLoading = false);
 
-    if (res['success'] == true) {
+    if (res['success']) {
       final user = res['user'] as UserModel;
       _navigateToNextScreen(user);
     } else {
-      setState(() => _errorMessage = res['message']);
+      setState(() {
+        _errorMessage = res['message'] ?? 'Authentication failed';
+      });
     }
   }
 
@@ -103,16 +107,17 @@ class _LoginScreenState extends State<LoginScreen> {
     final urlController = TextEditingController(text: currentUrl);
 
     if (!mounted) return;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Backend Server URL', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Backend API URL'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Specify your Flask API URL (e.g., http://10.0.2.2:5000 for Android emulator, or http://192.168.1.X:5000 for physical phone).',
+              'Enter your local machine IP, tunnel URL, or production domain:',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -120,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: urlController,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: AppColors.scaffoldBg(ctx),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -133,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: AppColors.primaryColor(ctx),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () async {
@@ -155,8 +160,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldBg(context),
       body: SafeArea(
         child: Stack(
           children: [
@@ -169,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryLight.withValues(alpha: 0.5),
+                  color: (isDark ? const Color(0xFF132E33) : AppColors.primaryLight).withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -181,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryLight.withValues(alpha: 0.4),
+                  color: (isDark ? const Color(0xFF163238) : AppColors.primaryLight).withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -193,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 150,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryLight.withValues(alpha: 0.3),
+                  color: (isDark ? const Color(0xFF132E33) : AppColors.primaryLight).withValues(alpha: 0.3),
                 ),
               ),
             ),
@@ -208,19 +215,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
+                        icon: Icon(
+                          isDark ? Icons.light_mode : Icons.dark_mode,
+                          color: isDark ? const Color(0xFF38B2AC) : AppColors.textSecondary,
+                        ),
+                        onPressed: () => ThemeController.toggleTheme(!isDark),
+                        tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.settings_outlined,
+                          color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                        ),
                         onPressed: _showServerConfig,
                         tooltip: 'Configure Server URL',
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'Login',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: AppColors.textMain(context),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -281,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 56,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: isDark ? const Color(0xFF38B2AC) : AppColors.primary,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
@@ -294,12 +312,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 24,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                             )
-                          : const Text(
+                          : Text(
                               'LOGIN',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: isDark ? const Color(0xFF0B1619) : Colors.white,
                                 letterSpacing: 1.2,
                               ),
                             ),
@@ -320,11 +338,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                       _navigateToNextScreen(guestUser);
                     },
-                    child: const Text(
+                    child: Text(
                       'Continue as a guest',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textSecondary,
+                        color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -340,6 +358,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildRoleTab(UserRole role, IconData icon) {
     final isSelected = _selectedRole == role;
+    final isDark = AppColors.isDark(context);
+
     return GestureDetector(
       onTap: () => _selectRole(role),
       child: AnimatedContainer(
@@ -347,19 +367,23 @@ class _LoginScreenState extends State<LoginScreen> {
         width: 90,
         height: 80,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : AppColors.card.withValues(alpha: 0.7),
+          color: isSelected
+              ? (isDark ? const Color(0xFF1A343B) : Colors.white)
+              : (isDark ? const Color(0xFF132429) : AppColors.card.withValues(alpha: 0.7)),
           borderRadius: BorderRadius.circular(18),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.15),
+                    color: (isDark ? const Color(0xFF38B2AC) : AppColors.primary).withValues(alpha: 0.2),
                     blurRadius: 15,
                     offset: const Offset(0, 6),
                   ),
                 ]
               : [],
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected
+                ? (isDark ? const Color(0xFF38B2AC) : AppColors.primary)
+                : (isDark ? const Color(0xFF1E373E) : Colors.transparent),
             width: 1.5,
           ),
         ),
@@ -369,7 +393,9 @@ class _LoginScreenState extends State<LoginScreen> {
             Icon(
               icon,
               size: 28,
-              color: isSelected ? AppColors.primary : AppColors.textMuted,
+              color: isSelected
+                  ? (isDark ? const Color(0xFF38B2AC) : AppColors.primary)
+                  : (isDark ? const Color(0xFF64748B) : AppColors.textMuted),
             ),
             const SizedBox(height: 6),
             Text(
@@ -377,7 +403,9 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                color: isSelected
+                    ? (isDark ? const Color(0xFF38B2AC) : AppColors.primary)
+                    : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
               ),
             ),
           ],
@@ -392,13 +420,16 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final isDark = AppColors.isDark(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF132429) : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -409,11 +440,14 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: controller,
         obscureText: isPassword,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(fontSize: 15, color: AppColors.textMain(context)),
         decoration: InputDecoration(
           border: InputBorder.none,
           labelText: label,
-          labelStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+          labelStyle: TextStyle(
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
+            fontSize: 14,
+          ),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
         ),
       ),

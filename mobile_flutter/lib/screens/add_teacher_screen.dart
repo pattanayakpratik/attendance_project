@@ -19,15 +19,6 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
   Future<void> _handleSubmit() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -36,13 +27,15 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
 
     if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
+        const SnackBar(
+          backgroundColor: AppColors.absentCoral,
+          content: Text('Please fill all required fields'),
+        ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-
     final res = await ApiService.addTeacher(
       name: name,
       email: email,
@@ -50,15 +43,13 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
       password: password,
       requestingUserId: widget.requestingUser.id,
     );
-
-    if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (res['success'] == true) {
+    if (mounted && res['success']) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.primary,
-          content: Text('Teacher added successfully!'),
+        SnackBar(
+          backgroundColor: AppColors.primaryColor(context),
+          content: const Text('Teacher added successfully!'),
         ),
       );
       Navigator.pop(context);
@@ -74,19 +65,21 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldBg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: AppColors.textMain(context), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Add Teacher',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.textMain(context),
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -115,7 +108,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                 height: 54,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: isDark ? const Color(0xFF38B2AC) : AppColors.primary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(27),
@@ -124,12 +117,12 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                   onPressed: _isLoading ? null : _handleSubmit,
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
-                      : const Text(
+                      : Text(
                           'ADD',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: isDark ? const Color(0xFF0B1619) : Colors.white,
                             letterSpacing: 1.2,
                           ),
                         ),
@@ -148,13 +141,16 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final isDark = AppColors.isDark(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF132429) : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -165,10 +161,13 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
         controller: controller,
         obscureText: isPassword,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(fontSize: 15, color: AppColors.textMain(context)),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+          labelStyle: TextStyle(
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
+            fontSize: 14,
+          ),
           border: InputBorder.none,
           floatingLabelBehavior: FloatingLabelBehavior.auto,
         ),

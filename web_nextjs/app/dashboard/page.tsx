@@ -52,19 +52,19 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7F8] p-4 sm:p-6 lg:p-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F5F7F8] dark:bg-[#0B1619] p-4 sm:p-6 lg:p-8 transition-colors duration-200">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Top Hero Banner in Deep Teal matching Mockup Theme */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-[#2D8885] to-[#1F6664] rounded-3xl p-8 sm:p-10 text-white shadow-xl shadow-teal-900/10">
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#2D8885] to-[#1F6664] dark:from-[#112F33] dark:to-[#0D2024] rounded-3xl p-8 sm:p-10 text-white shadow-xl shadow-teal-900/10 border border-transparent dark:border-teal-700/40">
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 dark:bg-teal-400/10 rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-teal-100 text-xs font-semibold uppercase tracking-wider mb-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 dark:bg-white/10 text-teal-100 dark:text-teal-300 text-xs font-semibold uppercase tracking-wider mb-3">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 Live Attendance System Active
               </div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Dashboard</h1>
-              <p className="text-teal-100 text-sm mt-1 max-w-lg">
+              <p className="text-teal-100 dark:text-teal-200/80 text-sm mt-1 max-w-lg">
                 Welcome back, <span className="font-bold text-white">{user.name}</span>! Track
                 attendance in real-time using GPS Geofencing and Dynamic QR Codes.
               </p>
@@ -73,7 +73,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <Link
                 href="/sessions"
-                className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-white text-[#2D8885] font-bold text-sm rounded-2xl shadow-lg hover:bg-teal-50 transition transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-white dark:bg-teal-500 text-[#2D8885] dark:text-[#0D2024] font-bold text-sm rounded-2xl shadow-lg hover:bg-teal-50 dark:hover:bg-teal-400 transition transform hover:-translate-y-0.5"
               >
                 <QrCode className="w-4 h-4" />
                 <span>Open QR Projector</span>
@@ -85,28 +85,28 @@ export default function DashboardPage() {
         {/* 2x2 Grid of Actions matching Screen 2 in the design mockup */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Quick Navigation</h2>
-            <span className="text-xs text-slate-400 font-medium">Core Modules</span>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Quick Navigation</h2>
+            <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">Core Modules</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* 1. Admin / Sessions Card */}
             <Link
               href="/sessions"
-              className="group bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-teal-300 transition-all duration-300 flex flex-col justify-between"
+              className="group bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] flex items-center justify-center text-[#2D8885] group-hover:scale-110 transition duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
                   <User className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mt-5 group-hover:text-[#2D8885] transition">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-5 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
                   Admin & Sessions
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Manage class sessions, set geofence radius, and project QR codes.
                 </p>
               </div>
-              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885]">
+              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
                 <span>View Sessions</span>
                 <ArrowUpRight className="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
               </div>
@@ -115,20 +115,20 @@ export default function DashboardPage() {
             {/* 2. Teacher Card */}
             <Link
               href="/teachers"
-              className="group bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-teal-300 transition-all duration-300 flex flex-col justify-between"
+              className="group bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] flex items-center justify-center text-[#2D8885] group-hover:scale-110 transition duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
                   <Lightbulb className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mt-5 group-hover:text-[#2D8885] transition">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-5 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
                   Teacher Portal
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Add teacher accounts, assign classes, and view assigned sessions.
                 </p>
               </div>
-              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885]">
+              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
                 <span>Manage Teachers</span>
                 <ArrowUpRight className="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
               </div>
@@ -137,20 +137,20 @@ export default function DashboardPage() {
             {/* 3. Attendance Report Card */}
             <Link
               href="/reports"
-              className="group bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-teal-300 transition-all duration-300 flex flex-col justify-between"
+              className="group bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] flex items-center justify-center text-[#2D8885] group-hover:scale-110 transition duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
                   <FileSpreadsheet className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mt-5 group-hover:text-[#2D8885] transition">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-5 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
                   Attendance Report
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Class-wise absent percentages, student attendance logs, and CSV exports.
                 </p>
               </div>
-              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885]">
+              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
                 <span>View Analytics</span>
                 <ArrowUpRight className="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
               </div>
@@ -159,20 +159,20 @@ export default function DashboardPage() {
             {/* 4. Student Directory Card */}
             <Link
               href="/students"
-              className="group bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-teal-300 transition-all duration-300 flex flex-col justify-between"
+              className="group bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] flex items-center justify-center text-[#2D8885] group-hover:scale-110 transition duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
                   <BarChart3 className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mt-5 group-hover:text-[#2D8885] transition">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-5 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
                   Student Directory
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Search students, view class rosters, and bulk upload students via Excel.
                 </p>
               </div>
-              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885]">
+              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
                 <span>View Students</span>
                 <ArrowUpRight className="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
               </div>
@@ -182,33 +182,33 @@ export default function DashboardPage() {
 
         {/* Live Metrics Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-[#2D8885]">
+          <div className="bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm flex items-center gap-4 transition-colors duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-[#2D8885] dark:text-teal-300">
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <div className="text-2xl font-black text-slate-800">{activeSessionsCount}</div>
-              <div className="text-xs text-slate-500 font-medium">Active Classroom Sessions</div>
+              <div className="text-2xl font-black text-slate-800 dark:text-slate-100">{activeSessionsCount}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Active Classroom Sessions</div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+          <div className="bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm flex items-center gap-4 transition-colors duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <div className="text-2xl font-black text-slate-800">92.4%</div>
-              <div className="text-xs text-slate-500 font-medium">Average Present Rate</div>
+              <div className="text-2xl font-black text-slate-800 dark:text-slate-100">92.4%</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Average Present Rate</div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+          <div className="bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm flex items-center gap-4 transition-colors duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <div className="text-2xl font-black text-slate-800">{totalStudents}</div>
-              <div className="text-xs text-slate-500 font-medium">Enrolled Students</div>
+              <div className="text-2xl font-black text-slate-800 dark:text-slate-100">{totalStudents}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Enrolled Students</div>
             </div>
           </div>
         </div>

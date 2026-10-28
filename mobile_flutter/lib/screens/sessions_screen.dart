@@ -17,34 +17,34 @@ class _SessionsScreenState extends State<SessionsScreen> {
   List<SessionModel> _filteredSessions = [];
   bool _isLoading = true;
 
-  // Mock initial demo sessions matching the mockup design
+  // Mock sessions matching Screen 4 of Design Mockup
   final List<SessionModel> _mockSessions = [
     SessionModel(
       id: 1,
       sessionName: 'Mathematics',
-      sessionCode: 'MATH-101-2026',
+      sessionCode: 'MATH-10-8801',
       className: 'Class 10',
-      expiryTime: DateTime.now().add(const Duration(hours: 2)),
-      latitude: 20.2961,
-      longitude: 85.8245,
+      expiryTime: DateTime.now().add(const Duration(hours: 1)),
+      createdBy: 1,
+      createdByName: 'Dr. John Doe',
     ),
     SessionModel(
       id: 2,
       sessionName: 'Physics',
-      sessionCode: 'PHY-102-2026',
+      sessionCode: 'PHYS-10-4492',
       className: 'Class 10',
-      expiryTime: DateTime.now().subtract(const Duration(days: 2)),
-      latitude: 20.2961,
-      longitude: 85.8245,
+      expiryTime: DateTime.now().subtract(const Duration(minutes: 40)),
+      createdBy: 2,
+      createdByName: 'Dr. Katherine Bell',
     ),
     SessionModel(
       id: 3,
-      sessionName: 'Chemistry Lab',
-      sessionCode: 'CHEM-203-2026',
+      sessionName: 'Chemistry',
+      sessionCode: 'CHEM-11-2099',
       className: 'Class 11',
-      expiryTime: DateTime.now().add(const Duration(minutes: 45)),
-      latitude: 20.2961,
-      longitude: 85.8245,
+      expiryTime: DateTime.now().add(const Duration(hours: 2)),
+      createdBy: 1,
+      createdByName: 'Prof. Marcus',
     ),
   ];
 
@@ -84,26 +84,28 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldBg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: AppColors.textMain(context), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Sessions',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.textMain(context),
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
+            icon: Icon(Icons.more_vert, color: AppColors.textMain(context)),
             onPressed: () {},
           ),
         ],
@@ -116,11 +118,12 @@ class _SessionsScreenState extends State<SessionsScreen> {
               // Filter input bar matching mockup
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF132429) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
+                  border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -129,10 +132,14 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _filterController,
-                  decoration: const InputDecoration(
-                    icon: Icon(Icons.filter_list, color: AppColors.textMuted),
+                  style: TextStyle(color: AppColors.textMain(context)),
+                  decoration: InputDecoration(
+                    icon: Icon(Icons.filter_list, color: isDark ? const Color(0xFF38B2AC) : AppColors.textMuted),
                     hintText: 'Filter',
-                    hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                    hintStyle: TextStyle(
+                      color: isDark ? const Color(0xFF64748B) : AppColors.textMuted,
+                      fontSize: 14,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
@@ -142,12 +149,12 @@ class _SessionsScreenState extends State<SessionsScreen> {
               // Sessions list
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                    ? Center(child: CircularProgressIndicator(color: isDark ? const Color(0xFF38B2AC) : AppColors.primary))
                     : _filteredSessions.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'No sessions found',
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: AppColors.textSub(context)),
                             ),
                           )
                         : ListView.separated(
@@ -164,11 +171,10 @@ class _SessionsScreenState extends State<SessionsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
+        backgroundColor: isDark ? const Color(0xFF38B2AC) : AppColors.primary,
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onPressed: () {
-          // Quick action to scan QR or create session
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const QrScannerScreen()),
@@ -181,14 +187,16 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   Widget _buildSessionCard(SessionModel session) {
     final isOpen = session.isOpen;
+    final isDark = AppColors.isDark(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF132429) : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -203,10 +211,10 @@ class _SessionsScreenState extends State<SessionsScreen> {
             children: [
               Text(
                 session.sessionName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: AppColors.textMain(context),
                 ),
               ),
               // Status pill badge matching mockup
@@ -214,8 +222,8 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   color: isOpen
-                      ? AppColors.primaryLight
-                      : Colors.grey.withOpacity(0.15),
+                      ? (isDark ? const Color(0xFF1A343B) : AppColors.primaryLight)
+                      : (isDark ? const Color(0xFF1A262A) : Colors.grey.withOpacity(0.15)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -223,7 +231,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: isOpen ? AppColors.primary : AppColors.textSecondary,
+                    color: isOpen
+                        ? (isDark ? const Color(0xFF38B2AC) : AppColors.primary)
+                        : (isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary),
                   ),
                 ),
               ),
@@ -232,21 +242,21 @@ class _SessionsScreenState extends State<SessionsScreen> {
           const SizedBox(height: 8),
           Text(
             session.className,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: isDark ? const Color(0xFF38B2AC) : AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.access_time, size: 14, color: AppColors.textMuted),
+              Icon(Icons.access_time, size: 14, color: AppColors.textSub(context)),
               const SizedBox(width: 6),
               Text(
                 session.formattedExpiry,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textMuted,
+                  color: AppColors.textSub(context),
                 ),
               ),
             ],
