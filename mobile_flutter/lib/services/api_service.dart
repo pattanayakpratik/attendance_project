@@ -242,4 +242,31 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  static Future<Map<String, dynamic>> getTimetable({String? day, String? className, int? teacherId}) async {
+    final baseUrl = await StorageService.getBaseUrl();
+    final user = await StorageService.getUser();
+    final queryParams = <String, String>{};
+    if (user != null) {
+      queryParams['role'] = user.role.name.toUpperCase();
+      queryParams['id'] = user.id.toString();
+    }
+    if (day != null && day != 'All Days') queryParams['day'] = day;
+    if (className != null && className != 'ALL') queryParams['class_name'] = className;
+    if (teacherId != null) queryParams['teacher_id'] = teacherId.toString();
+
+    final uri = Uri.parse('$baseUrl/get_timetable').replace(queryParameters: queryParams);
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+      return {'success': false, 'message': data['message'] ?? 'Failed to load timetable'};
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }

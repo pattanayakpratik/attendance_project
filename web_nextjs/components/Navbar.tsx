@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   Crown,
+  CalendarDays,
 } from 'lucide-react';
 import { getSavedUser, clearUser, UserSession } from '@/lib/api';
 import { useTheme } from '@/context/ThemeContext';
@@ -38,15 +39,24 @@ export default function Navbar() {
   };
 
   const isMaster = user?.role === 'SUPERADMIN';
+  const isStudent = user?.role === 'STUDENT';
+  const isTeacher = user?.role === 'TEACHER';
 
-  const navLinks = [
-    ...(isMaster ? [{ href: '/master', label: '👑 Master Portal', icon: Crown }] : []),
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/sessions', label: 'Sessions & QR', icon: QrCode },
-    { href: '/students', label: 'Students', icon: GraduationCap },
-    { href: '/teachers', label: 'Teachers', icon: Users },
-    { href: '/reports', label: 'Reports', icon: BarChart3 },
-  ];
+  const navLinks = isStudent
+    ? [
+        { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/timetable', label: 'My Timetable', icon: CalendarDays },
+        { href: '/profile', label: 'My Profile', icon: User },
+      ]
+    : [
+        ...(isMaster ? [{ href: '/master', label: '👑 Master Portal', icon: Crown }] : []),
+        { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/timetable', label: 'Timetable', icon: CalendarDays },
+        { href: '/sessions', label: 'Sessions & QR', icon: QrCode },
+        { href: '/students', label: 'Students', icon: GraduationCap },
+        ...(!isTeacher ? [{ href: '/teachers', label: 'Teachers', icon: Users }] : []),
+        { href: '/reports', label: 'Reports', icon: BarChart3 },
+      ];
 
   return (
     <header className="sticky top-0 z-50 bg-[#2D8885] dark:bg-[#0D2024] text-white shadow-md border-b border-teal-700/30 dark:border-teal-900/40 transition-colors duration-200">

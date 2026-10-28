@@ -1,6 +1,11 @@
+import os
 from dotenv import load_dotenv
 
-load_dotenv()
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(_env_path):
+    load_dotenv(_env_path)
+else:
+    load_dotenv()
 
 
 
@@ -3290,6 +3295,295 @@ def master_all_users():
     except Exception as e:
         app.logger.error(f"Error in master_all_users: {e}")
         return jsonify({'message': f'Failed to load all users: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+# ==========================================
+# Timetable Management Routes
+# ==========================================
+
+@app.route('/get_timetable', methods=['GET'])
+def get_timetable():
+    """
+    Role-based Timetable view:
+    - STUDENT: Sees ONLY their class's timetable.
+    - TEACHER: Sees ONLY their assigned teaching timetable.
+    - ADMIN / SUPERADMIN: Sees all timetables across the institute with optional filters
+      (?class_name=..., ?teacher_id=..., ?day=...).
+    """
+    user_id, token_role = get_auth_user_from_request()
+    req_role = (request.args.get('role') or token_role or '').upper()
+    req_id = request.args.get('user_id') or request.args.get('student_id') or request.args.get('id') or user_id
+
+    filter_teacher_id = request.args.get('teacher_id')
+    filter_class = request.args.get('class_name') or request.args.get('class')
+    filter_day = request.args.get('day') or request.args.get('day_of_week')
+    inst_id = get_auth_institute_id()
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+
+        # Resolve role and user details if needed
+        detected_role = req_role
+        student_class = None
+
+        # Check if caller is student
+        if detected_role == 'STUDENT' or (not detected_role and req_id):
+            cur.execute("SELECT id, name, class, institute_id FROM student WHERE id = %s", (req_id,))
+            st_row = cur.fetchone()
+            if st_row:
+                detected_role = 'STUDENT'
+                student_class = st_row[2]
+                if not inst_id and st_row[3]:
+                    inst_id = st_row[3]
+
+        # Check if caller is user (Teacher / Admin / Superadmin)
+        if detected_role != 'STUDENT' and (not detected_role or detected_role in ('TEACHER', 'ADMIN', 'SUPERADMIN')):
+            if req_id:
+                cur.execute("SELECT role, institute_id FROM user WHERE id = %s", (req_id,))
+                u_row = cur.fetchone()
+                if u_row:
+                    if not detected_role:
+                        detected_role = u_row[0].upper()
+                    if not inst_id and u_row[1]:
+                        inst_id = u_row[1]
+
+        if not detected_role:
+            detected_role = 'ADMIN'  # Default fallback
+
+        if not inst_id:
+            inst_id = 1
+
+        query_conditions = ["t.institute_id = %s"]
+        query_params = [inst_id]
+
+        if detected_role == 'STUDENT':
+            # Student strictly views ONLY their class
+            if not student_class and req_id:
+                cur.execute("SELECT class FROM student WHERE id = %s", (req_id,))
+                st_r = cur.fetchone()
+                if st_r:
+                    student_class = st_r[0]
+
+            if not student_class:
+                return jsonify({
+                    'role': 'STUDENT',
+                    'student_class': None,
+                    'timetable': [],
+                    'total_slots': 0,
+                    'meta': {'classes': [], 'teachers': [], 'days': []}
+                }), 200
+
+            query_conditions.append("t.class_name = %s")
+            query_params.append(student_class)
+
+        elif detected_role == 'TEACHER':
+            # Teacher strictly views ONLY their assigned teaching lectures
+            teacher_id = req_id
+            query_conditions.append("t.teacher_id = %s")
+            query_params.append(teacher_id)
+
+        else:
+            # ADMIN / SUPERADMIN: Can view all and apply specific filters
+            if filter_class:
+                query_conditions.append("t.class_name = %s")
+                query_params.append(filter_class)
+            if filter_teacher_id:
+                query_conditions.append("t.teacher_id = %s")
+                query_params.append(int(filter_teacher_id))
+
+        # Filter by day if requested
+        if filter_day and filter_day.lower() != 'all':
+            query_conditions.append("LOWER(t.day_of_week) = LOWER(%s)")
+            query_params.append(filter_day)
+
+        where_clause = " WHERE " + " AND ".join(query_conditions)
+
+        sql = f"""
+            SELECT t.id, t.institute_id, t.class_name, t.subject, t.teacher_id,
+                   t.day_of_week, t.start_time, t.end_time, t.room_number, t.created_at,
+                   u.name as teacher_name, u.email as teacher_email
+            FROM timetable t
+            LEFT JOIN user u ON t.teacher_id = u.id
+            {where_clause}
+            ORDER BY 
+                CASE LOWER(t.day_of_week)
+                    WHEN 'monday' THEN 1
+                    WHEN 'tuesday' THEN 2
+                    WHEN 'wednesday' THEN 3
+                    WHEN 'thursday' THEN 4
+                    WHEN 'friday' THEN 5
+                    WHEN 'saturday' THEN 6
+                    WHEN 'sunday' THEN 7
+                    ELSE 8
+                END,
+                t.start_time ASC,
+                t.id ASC
+        """
+        cur.execute(sql, tuple(query_params))
+        rows = cur.fetchall()
+
+        timetable_list = []
+        for r in rows:
+            timetable_list.append({
+                'id': r[0],
+                'institute_id': r[1],
+                'class_name': r[2],
+                'subject': r[3],
+                'teacher_id': r[4],
+                'day_of_week': r[5],
+                'start_time': r[6],
+                'end_time': r[7],
+                'room_number': r[8] or '',
+                'created_at': str(r[9]) if r[9] else '',
+                'teacher_name': r[10] or f"Teacher #{r[4]}",
+                'teacher_email': r[11] or ''
+            })
+
+        # Fetch metadata (classes & teachers in institute) to assist UI filter dropdowns & slot creation
+        cur.execute("""
+            SELECT DISTINCT class_name FROM (
+                SELECT class_name FROM timetable WHERE institute_id = %s
+                UNION
+                SELECT class as class_name FROM student WHERE institute_id = %s AND class IS NOT NULL
+            ) sub WHERE class_name != '' ORDER BY class_name ASC
+        """, (inst_id, inst_id))
+        class_rows = cur.fetchall()
+        meta_classes = [c[0] for c in class_rows if c[0]]
+
+        cur.execute("""
+            SELECT id, name, email FROM user 
+            WHERE institute_id = %s AND role IN ('TEACHER', 'ADMIN')
+            ORDER BY name ASC
+        """, (inst_id,))
+        teacher_rows = cur.fetchall()
+        meta_teachers = [{'id': tr[0], 'name': tr[1], 'email': tr[2]} for tr in teacher_rows]
+
+        days_list = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        return jsonify({
+            'role': detected_role,
+            'user_id': req_id,
+            'student_class': student_class,
+            'timetable': timetable_list,
+            'total_slots': len(timetable_list),
+            'meta': {
+                'classes': meta_classes,
+                'teachers': meta_teachers,
+                'days': days_list
+            }
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in get_timetable: {e}")
+        return jsonify({'message': f'Failed to retrieve timetable: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+@app.route('/add_timetable_slot', methods=['POST'])
+def add_timetable_slot():
+    """
+    Creates a new timetable slot.
+    Allowed for ADMIN, TEACHER, and SUPERADMIN.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    data = request.get_json() or {}
+
+    class_name = (data.get('class_name') or data.get('class') or '').strip()
+    subject = (data.get('subject') or '').strip()
+    day_of_week = (data.get('day_of_week') or data.get('day') or '').strip()
+    start_time = (data.get('start_time') or '').strip()
+    end_time = (data.get('end_time') or '').strip()
+    room_number = (data.get('room_number') or data.get('room') or '').strip()
+    teacher_id = data.get('teacher_id') or user_id
+    inst_id = data.get('institute_id') or get_auth_institute_id() or 1
+
+    if not class_name or not subject or not day_of_week or not start_time or not end_time:
+        return jsonify({'message': 'Missing required fields: class_name, subject, day_of_week, start_time, and end_time are required.'}), 400
+
+    if not teacher_id:
+        return jsonify({'message': 'teacher_id is required.'}), 400
+
+    # Ensure valid day of week capitalization
+    day_normalized = day_of_week.capitalize()
+    valid_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    matched_day = next((d for d in valid_days if d.lower() == day_of_week.lower()), day_normalized)
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            INSERT INTO timetable (institute_id, class_name, subject, teacher_id, day_of_week, start_time, end_time, room_number)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (inst_id, class_name, subject, int(teacher_id), matched_day, start_time, end_time, room_number))
+        slot_id = getattr(cur, 'lastrowid', None)
+        if not slot_id:
+            cur.execute("SELECT id FROM timetable WHERE institute_id = %s AND class_name = %s AND subject = %s ORDER BY id DESC LIMIT 1", (inst_id, class_name, subject))
+            r = cur.fetchone()
+            if r:
+                slot_id = r[0]
+        mysql.connection.commit()
+
+        return jsonify({
+            'message': f'Timetable slot for {subject} ({class_name}) on {matched_day} created successfully!',
+            'slot_id': slot_id
+        }), 201
+
+    except Exception as e:
+        if mysql.connection:
+            mysql.connection.rollback()
+        app.logger.error(f"Error in add_timetable_slot: {e}")
+        return jsonify({'message': f'Failed to create timetable slot: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+@app.route('/delete_timetable_slot', methods=['DELETE', 'POST'])
+def delete_timetable_slot():
+    """
+    Deletes a timetable slot.
+    Allowed for Admin or the assigned Teacher.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    data = request.get_json(silent=True) or {}
+    slot_id = request.args.get('id') or request.args.get('slot_id') or data.get('id') or data.get('slot_id')
+
+    if not slot_id:
+        return jsonify({'message': 'Slot id is required.'}), 400
+
+    try:
+        slot_id = int(slot_id)
+    except (ValueError, TypeError):
+        return jsonify({'message': 'Invalid slot id provided.'}), 400
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id, institute_id, teacher_id, subject, class_name FROM timetable WHERE id = %s", (slot_id,))
+        slot = cur.fetchone()
+        if not slot:
+            return jsonify({'message': 'Timetable slot not found.'}), 404
+
+        # Check authorization if teacher
+        if token_role == 'TEACHER' and user_id and slot[2] != user_id:
+            return jsonify({'message': 'Unauthorized: Teachers can only delete their own timetable slots.'}), 403
+
+        cur.execute("DELETE FROM timetable WHERE id = %s", (slot_id,))
+        mysql.connection.commit()
+
+        return jsonify({'message': f'Slot for {slot[3]} ({slot[4]}) successfully deleted.'}), 200
+
+    except Exception as e:
+        if mysql.connection:
+            mysql.connection.rollback()
+        app.logger.error(f"Error in delete_timetable_slot: {e}")
+        return jsonify({'message': f'Failed to delete timetable slot: {str(e)}'}), 500
     finally:
         if cur:
             cur.close()
