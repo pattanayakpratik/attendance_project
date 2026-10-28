@@ -113,14 +113,107 @@ class PyMySQLConnectionWrapper:
                 pass
             self._conn = None
 
+class PostgresCursorWrapper:
+    def __init__(self, cursor, conn):
+        self._cur = cursor
+        self._conn = conn
+        self.lastrowid = None
+        self.rowcount = -1
+
+    def execute(self, query, params=None):
+        import re
+        q = re.sub(r'(?i)\buser\b', '"user"', query)
+        q = q.replace('NOW()', 'CURRENT_TIMESTAMP')
+
+        is_insert = q.strip().upper().startswith('INSERT')
+        has_returning = 'RETURNING' in q.upper()
+
+        if is_insert and not has_returning and ('"user"' in q or 'session' in q or 'attendance' in q):
+            mod_q = q.rstrip().rstrip(';') + ' RETURNING id;'
+            try:
+                res = self._cur.execute(mod_q, params) if params is not None else self._cur.execute(mod_q)
+                row = self._cur.fetchone()
+                if row:
+                    self.lastrowid = row[0]
+                self.rowcount = self._cur.rowcount
+                return res
+            except Exception:
+                self._conn.rollback()
+
+        res = self._cur.execute(q, params) if params is not None else self._cur.execute(q)
+        self.rowcount = self._cur.rowcount
+        return res
+
+    def executemany(self, query, seq_of_params):
+        import re
+        q = re.sub(r'(?i)\buser\b', '"user"', query)
+        return self._cur.executemany(q, seq_of_params)
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def close(self):
+        try:
+            self._cur.close()
+        except:
+            pass
+
+class PostgresConnectionWrapper:
+    def __init__(self, host, user, password, dbname, port, sslmode='require'):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.dbname = dbname
+        self.port = port
+        self.sslmode = sslmode
+        self._conn = None
+
+    def _get_conn(self):
+        import psycopg2
+        if self._conn is None or self._conn.closed != 0:
+            self._conn = psycopg2.connect(
+                host=self.host,
+                port=self.port,
+                user=self.user,
+                password=self.password,
+                dbname=self.dbname,
+                sslmode=self.sslmode,
+                connect_timeout=10
+            )
+            self._conn.autocommit = True
+        return self._conn
+
+    def cursor(self):
+        return PostgresCursorWrapper(self._get_conn().cursor(), self._get_conn())
+
+    def commit(self):
+        if self._conn and self._conn.closed == 0:
+            self._conn.commit()
+
+    def rollback(self):
+        if self._conn and self._conn.closed == 0:
+            self._conn.rollback()
+
+    def close(self):
+        if self._conn and self._conn.closed == 0:
+            try:
+                self._conn.close()
+            except:
+                pass
+            self._conn = None
+
 class ResilientMySQL:
     """
-    Transparent database adapter that connects to MySQL if available,
+    Transparent database adapter that connects to PostgreSQL or MySQL if available,
     or smoothly falls back to a zero-config local SQLite database (attendance.db).
     """
     def __init__(self, app=None):
         self.app = app
         self.is_sqlite = False
+        self._postgres_conn = None
         self._mysql_conn = None
         self._sqlite_conn = None
         if app is not None:
@@ -129,8 +222,47 @@ class ResilientMySQL:
     def init_app(self, app):
         self.app = app
         engine = os.environ.get('DB_ENGINE', 'auto').lower()
+        db_url = os.environ.get('DATABASE_URL', '')
 
-        if engine != 'sqlite':
+        # 1. Try PostgreSQL if configured
+        if engine in ('postgres', 'postgresql') or db_url.startswith('postgres://') or db_url.startswith('postgresql://') or os.environ.get('PG_HOST'):
+            try:
+                import urllib.parse
+                if db_url:
+                    parsed = urllib.parse.urlparse(db_url)
+                    pg_user = urllib.parse.unquote(parsed.username or 'postgres')
+                    pg_pass = urllib.parse.unquote(parsed.password or '')
+                    pg_host = parsed.hostname or 'localhost'
+                    pg_port = parsed.port or 5432
+                    pg_db = parsed.path.lstrip('/') or 'postgres'
+                else:
+                    pg_host = os.environ.get('PG_HOST', 'localhost')
+                    pg_port = int(os.environ.get('PG_PORT', 5432))
+                    pg_user = os.environ.get('PG_USER', 'postgres')
+                    pg_pass = os.environ.get('PG_PASSWORD', '')
+                    pg_db = os.environ.get('PG_DATABASE', 'postgres')
+
+                sslmode = os.environ.get('PG_SSLMODE', 'require')
+                self._postgres_conn = PostgresConnectionWrapper(
+                    host=pg_host,
+                    user=pg_user,
+                    password=pg_pass,
+                    dbname=pg_db,
+                    port=pg_port,
+                    sslmode=sslmode
+                )
+                cur = self._postgres_conn.cursor()
+                cur.execute("SELECT 1")
+                cur.close()
+
+                self.is_sqlite = False
+                app.logger.info("Connected to PostgreSQL (Supabase) at %s:%s/%s", pg_host, pg_port, pg_db)
+                return
+            except Exception as e:
+                app.logger.warning("PostgreSQL connection failed: %s. Trying MySQL/SQLite.", e)
+
+        # 2. Try MySQL if configured
+        if engine not in ('sqlite', 'postgres', 'postgresql'):
             try:
                 # Try connecting to MySQL
                 host = app.config.get('MYSQL_HOST', '127.0.0.1')
@@ -182,8 +314,11 @@ class ResilientMySQL:
 
     @property
     def connection(self):
-        if not self.is_sqlite and self._mysql_conn:
-            return self._mysql_conn
+        if not self.is_sqlite:
+            if self._postgres_conn:
+                return self._postgres_conn
+            if self._mysql_conn:
+                return self._mysql_conn
         return self._sqlite_conn
 
     def _init_sqlite_schema(self, db_path):
