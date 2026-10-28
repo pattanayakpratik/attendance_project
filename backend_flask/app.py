@@ -174,7 +174,7 @@ def add_student():
 
 
 
-        if not user_role_result or user_role_result[0] not in ('ADMIN', 'TEACHER'):
+        if not user_role_result or user_role_result[0] not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
 
             return jsonify({'message': 'User not authorized to add students.'}), 403
 
@@ -324,7 +324,7 @@ def add_session():
 
         user_role_result = cur.fetchone()
 
-        if not user_role_result or user_role_result[0] not in ('ADMIN', 'TEACHER'):
+        if not user_role_result or user_role_result[0] not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
 
             return jsonify({'message': 'User not authorized to create sessions.'}), 403
 
@@ -966,7 +966,7 @@ def get_all_student():
 
                 user_role = user_role_result[0]
 
-        if not user_role or user_role not in ('ADMIN', 'TEACHER'):
+        if not user_role or user_role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
 
             return jsonify({'message': 'User not authorized to view students.'}), 403 
 
@@ -978,10 +978,17 @@ def get_all_student():
             if r and r[0]:
                 inst_id = r[0]
 
+        filter_status = request.args.get('status')
         if inst_id:
-            cur.execute("SELECT id, name, class, email, phone FROM student WHERE institute_id = %s", (inst_id,))
+            if filter_status and filter_status.upper() != 'ALL':
+                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student WHERE institute_id = %s AND UPPER(COALESCE(status, 'ACTIVE')) = %s ORDER BY name ASC", (inst_id, filter_status.upper()))
+            else:
+                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student WHERE institute_id = %s ORDER BY name ASC", (inst_id,))
         else:
-            cur.execute("SELECT id, name, class, email, phone FROM student")
+            if filter_status and filter_status.upper() != 'ALL':
+                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student WHERE UPPER(COALESCE(status, 'ACTIVE')) = %s ORDER BY name ASC", (filter_status.upper(),))
+            else:
+                cur.execute("SELECT id, name, class, email, phone, COALESCE(status, 'ACTIVE') FROM student ORDER BY name ASC")
 
         students = cur.fetchall()
 
@@ -1003,7 +1010,9 @@ def get_all_student():
 
                 'email': row[3],
 
-                'phone': row[4]
+                'phone': row[4],
+
+                'status': row[5] or 'ACTIVE'
 
             })
 
@@ -1509,7 +1518,7 @@ def get_sessions():
 
                 user_role = user_role_result[0]
 
-        if not user_role or user_role not in ('ADMIN', 'TEACHER'):
+        if not user_role or user_role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
 
             return jsonify({'message': 'User not authorized to view sessions.'}), 403
 
@@ -1603,7 +1612,7 @@ def get_session_attendance():
             user_role_result = cur.fetchone()
             if user_role_result:
                 user_role = user_role_result[0]
-        if not user_role or user_role not in ('ADMIN', 'TEACHER'):
+        if not user_role or user_role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
             return jsonify({'message': 'User not authorized to view attendance.'}), 403
 
         # check if session exists
@@ -2467,6 +2476,67 @@ def update_teacher():
 
 
 # student login
+
+@app.route('/update_student_status', methods=['POST'])
+def update_student_status():
+    """
+    Update a student's status (e.g. 'ACTIVE', 'LEFT', 'GRADUATED').
+    Preserves all historical attendance records, logs, and stats for institute compliance.
+    Restricted to Campus Admin, Teacher, or Superadmin of that student's institute.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    data = request.get_json() or {}
+    student_id = data.get('student_id')
+    new_status = (data.get('status') or 'ACTIVE').strip().upper()
+
+    if not student_id or new_status not in ('ACTIVE', 'LEFT', 'GRADUATED'):
+        return jsonify({'message': 'student_id and a valid status (ACTIVE, LEFT, GRADUATED) are required.'}), 400
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        requester_role = token_role
+        requester_inst_id = get_auth_institute_id()
+        if not requester_role and user_id:
+            cur.execute("SELECT role, institute_id FROM user WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            if r:
+                requester_role = r[0]
+                if not requester_inst_id:
+                    requester_inst_id = r[1]
+
+        if requester_role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
+            return jsonify({'message': 'Forbidden: Only administrators and teachers can update student status.'}), 403
+
+        # Verify student exists and belongs to requester's institute
+        cur.execute("SELECT id, name, institute_id, COALESCE(status, 'ACTIVE') FROM student WHERE id = %s", (student_id,))
+        student_row = cur.fetchone()
+        if not student_row:
+            return jsonify({'message': f'Student with ID {student_id} not found.'}), 404
+
+        stud_inst_id = student_row[2]
+        if requester_role != 'SUPERADMIN' and requester_inst_id and stud_inst_id and requester_inst_id != stud_inst_id:
+            return jsonify({'message': 'Forbidden: You cannot modify students from another institute.'}), 403
+
+        # Update status
+        cur.execute("UPDATE student SET status = %s WHERE id = %s", (new_status, student_id))
+        mysql.connection.commit()
+
+        action_word = "marked as left" if new_status == 'LEFT' else "reactivated"
+        return jsonify({
+            'message': f"Student {student_row[1]} (ID: {student_id}) successfully {action_word}. Historical attendance data is fully preserved.",
+            'student_id': student_id,
+            'status': new_status
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in update_student_status: {e}")
+        mysql.connection.rollback()
+        return jsonify({'message': f'Failed to update student status: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
 
 @app.route('/student_login', methods=['POST'])
 

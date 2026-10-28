@@ -345,7 +345,9 @@ class ResilientMySQL:
                 class TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
                 phone TEXT NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                institute_id INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'ACTIVE'
             )
         ''')
 
