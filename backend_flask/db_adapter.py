@@ -66,6 +66,53 @@ class SQLiteConnectionWrapper:
             self._conn.close()
             self._conn = None
 
+class PyMySQLConnectionWrapper:
+    def __init__(self, host, user, password, database, port, ssl_ctx=None):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
+        self.ssl_ctx = ssl_ctx
+        self._conn = None
+
+    def _get_conn(self):
+        if self._conn is None or not self._conn.open:
+            kwargs = {
+                'host': self.host,
+                'user': self.user,
+                'password': self.password,
+                'database': self.database,
+                'port': self.port,
+                'autocommit': True,
+                'connect_timeout': 10
+            }
+            if self.ssl_ctx:
+                kwargs['ssl'] = self.ssl_ctx
+            self._conn = pymysql.connect(**kwargs)
+        else:
+            self._conn.ping(reconnect=True)
+        return self._conn
+
+    def cursor(self):
+        return self._get_conn().cursor()
+
+    def commit(self):
+        if self._conn and self._conn.open:
+            self._conn.commit()
+
+    def rollback(self):
+        if self._conn and self._conn.open:
+            self._conn.rollback()
+
+    def close(self):
+        if self._conn and self._conn.open:
+            try:
+                self._conn.close()
+            except:
+                pass
+            self._conn = None
+
 class ResilientMySQL:
     """
     Transparent database adapter that connects to MySQL if available,
@@ -74,7 +121,7 @@ class ResilientMySQL:
     def __init__(self, app=None):
         self.app = app
         self.is_sqlite = False
-        self._mysql_instance = None
+        self._mysql_conn = None
         self._sqlite_conn = None
         if app is not None:
             self.init_app(app)
@@ -92,22 +139,35 @@ class ResilientMySQL:
                 db_name = app.config.get('MYSQL_DB', 'attendance_app')
                 port = int(app.config.get('MYSQL_PORT', 3306))
 
-                # Test socket connection with PyMySQL
-                conn = pymysql.connect(
+                # Determine if SSL/TLS is needed (e.g. TiDB Cloud or remote cloud host)
+                use_ssl = (
+                    os.environ.get('MYSQL_SSL', '').lower() in ('true', '1', 'yes')
+                    or port == 4000
+                    or 'tidbcloud.com' in host
+                    or (host not in ('127.0.0.1', 'localhost') and not host.startswith('192.168.') and not host.startswith('10.'))
+                )
+
+                ssl_ctx = None
+                if use_ssl:
+                    import ssl
+                    ssl_ctx = ssl.create_default_context()
+
+                # Test socket connection and initialize connection wrapper
+                self._mysql_conn = PyMySQLConnectionWrapper(
                     host=host,
                     user=user,
                     password=passwd,
                     database=db_name,
                     port=port,
-                    connect_timeout=2
+                    ssl_ctx=ssl_ctx
                 )
-                conn.close()
+                # Verify cursor works
+                cur = self._mysql_conn.cursor()
+                cur.execute("SELECT 1")
+                cur.close()
 
-                # Connection successful! Use flask_mysqldb or PyMySQL
-                from flask_mysqldb import MySQL
-                self._mysql_instance = MySQL(app)
                 self.is_sqlite = False
-                app.logger.info("Connected to MySQL database at %s:%s", host, port)
+                app.logger.info("Connected to MySQL database at %s:%s (ssl=%s)", host, port, use_ssl)
                 return
             except Exception as e:
                 app.logger.warning("MySQL connection failed: %s. Using SQLite fallback.", e)
@@ -122,8 +182,8 @@ class ResilientMySQL:
 
     @property
     def connection(self):
-        if not self.is_sqlite and self._mysql_instance:
-            return self._mysql_instance.connection
+        if not self.is_sqlite and self._mysql_conn:
+            return self._mysql_conn
         return self._sqlite_conn
 
     def _init_sqlite_schema(self, db_path):
