@@ -1,16 +1,30 @@
+import os
+from dotenv import load_dotenv
 import psycopg2
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(_env_path):
+    load_dotenv(_env_path)
+else:
+    load_dotenv()
+
 def migrate():
-    password = 'your_supabase_password'
+    host = os.environ.get('PG_HOST', 'localhost')
+    port = int(os.environ.get('PG_PORT', 5432))
+    user = os.environ.get('PG_USER', 'postgres')
+    password = os.environ.get('PG_PASSWORD', '')
+    dbname = os.environ.get('PG_DATABASE', 'postgres')
+    sslmode = os.environ.get('PG_SSLMODE', 'require')
+
     conn = psycopg2.connect(
-        host='aws-0-eu-north-1.pooler.supabase.com',
-        port=5432,
-        user='postgres.your_project_ref',
+        host=host,
+        port=port,
+        user=user,
         password=password,
-        dbname='postgres',
-        sslmode='require',
+        dbname=dbname,
+        sslmode=sslmode,
         connect_timeout=10
     )
     cur = conn.cursor()
