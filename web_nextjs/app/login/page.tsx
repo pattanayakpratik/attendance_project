@@ -114,58 +114,45 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select your portal role to sign in</p>
         </div>
 
-        {/* 4 Role Selector Tabs Including Master Owner */}
-        <div className="grid grid-cols-4 gap-2 mb-8">
+        {/* 3 Role Selector Tabs for Normal Users and Campus Admins */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
           <button
             type="button"
             onClick={() => handleRoleChange('ADMIN')}
-            className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all duration-200 ${
+            className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all duration-200 ${
               selectedRole === 'ADMIN'
-                ? 'bg-white dark:bg-[#1A343B] border-[#2D8885] dark:border-teal-400 shadow-md text-[#2D8885] dark:text-teal-300'
+                ? 'bg-white dark:bg-[#1A343B] border-[#2D8885] dark:border-teal-400 shadow-lg shadow-teal-700/10 text-[#2D8885] dark:text-teal-300'
                 : 'bg-slate-50/80 dark:bg-[#0E1E22] border-slate-200 dark:border-[#1A3138] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
           >
-            <ShieldCheck className="w-5 h-5 mb-1" />
-            <span className="text-[11px] font-semibold">Admin</span>
+            <ShieldCheck className="w-6 h-6 mb-1.5" />
+            <span className="text-xs font-semibold">Admin</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleRoleChange('TEACHER')}
-            className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all duration-200 ${
+            className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all duration-200 ${
               selectedRole === 'TEACHER'
-                ? 'bg-white dark:bg-[#1A343B] border-[#2D8885] dark:border-teal-400 shadow-md text-[#2D8885] dark:text-teal-300'
+                ? 'bg-white dark:bg-[#1A343B] border-[#2D8885] dark:border-teal-400 shadow-lg shadow-teal-700/10 text-[#2D8885] dark:text-teal-300'
                 : 'bg-slate-50/80 dark:bg-[#0E1E22] border-slate-200 dark:border-[#1A3138] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
           >
-            <School className="w-5 h-5 mb-1" />
-            <span className="text-[11px] font-semibold">Teacher</span>
+            <School className="w-6 h-6 mb-1.5" />
+            <span className="text-xs font-semibold">Teacher</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleRoleChange('STUDENT')}
-            className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all duration-200 ${
+            className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all duration-200 ${
               selectedRole === 'STUDENT'
-                ? 'bg-white dark:bg-[#1A343B] border-[#2D8885] dark:border-teal-400 shadow-lg text-[#2D8885] dark:text-teal-300'
+                ? 'bg-white dark:bg-[#1A343B] border-[#2D8885] dark:border-teal-400 shadow-lg shadow-teal-700/10 text-[#2D8885] dark:text-teal-300'
                 : 'bg-slate-50/80 dark:bg-[#0E1E22] border-slate-200 dark:border-[#1A3138] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
             }`}
           >
-            <GraduationCap className="w-5 h-5 mb-1" />
-            <span className="text-[11px] font-semibold">Student</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleRoleChange('SUPERADMIN')}
-            className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all duration-200 ${
-              selectedRole === 'SUPERADMIN'
-                ? 'bg-white dark:bg-[#1A343B] border-amber-500 dark:border-amber-400 shadow-md text-amber-600 dark:text-amber-300'
-                : 'bg-slate-50/80 dark:bg-[#0E1E22] border-slate-200 dark:border-[#1A3138] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-            }`}
-          >
-            <Crown className="w-5 h-5 mb-1 text-amber-500" />
-            <span className="text-[11px] font-semibold">Owner</span>
+            <GraduationCap className="w-6 h-6 mb-1.5" />
+            <span className="text-xs font-semibold">Student</span>
           </button>
         </div>
 
