@@ -2033,8 +2033,8 @@ def login_user():
             institute_name = user[5] or "Greenwood International School"
             institute_code = user[6] or "GW-001"
 
-            if role not in ('ADMIN', 'TEACHER'):
-                return jsonify({'message': 'Only admin or teacher can login!'}), 403
+            if role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
+                return jsonify({'message': 'Unauthorized login role!'}), 403
 
             token = generate_auth_token(user_id, role, name=user_name, institute_id=institute_id)
             return jsonify({
@@ -2706,6 +2706,187 @@ def register_institute():
         app.logger.error(f"Error in register_institute: {e}")
         mysql.connection.rollback()
         return jsonify({'message': f'Failed to register institute: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+# ==========================================
+# Platform Master Admin (Owner) Routes
+# ==========================================
+
+@app.route('/master/overview', methods=['GET'])
+def master_overview():
+    """
+    Returns platform-wide metrics and multi-institute breakdown.
+    Restricted to SUPERADMIN (Platform Owner).
+    """
+    user_id, token_role = get_auth_user_from_request()
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        
+        # Verify role is SUPERADMIN
+        role = token_role
+        if not role and user_id:
+            cur.execute("SELECT role FROM user WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            if r:
+                role = r[0]
+
+        if role != 'SUPERADMIN':
+            return jsonify({'message': 'Forbidden: Master Admin privileges required.'}), 403
+
+        # 1. Global KPIs
+        cur.execute("SELECT COUNT(*) FROM institute")
+        total_institutes = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM user WHERE role = 'ADMIN'")
+        total_admins = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM user WHERE role = 'TEACHER'")
+        total_teachers = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM student")
+        total_students = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM session")
+        total_sessions = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM attendance")
+        total_attendance = cur.fetchone()[0]
+
+        # 2. Institute Breakdown
+        cur.execute("""
+            SELECT i.id, i.name, i.code, i.address, i.created_at,
+                   COUNT(DISTINCT CASE WHEN u.role = 'ADMIN' THEN u.id END) as admin_count,
+                   COUNT(DISTINCT CASE WHEN u.role = 'TEACHER' THEN u.id END) as teacher_count,
+                   COUNT(DISTINCT s.id) as student_count,
+                   COUNT(DISTINCT sess.id) as session_count
+            FROM institute i
+            LEFT JOIN user u ON u.institute_id = i.id
+            LEFT JOIN student s ON s.institute_id = i.id
+            LEFT JOIN session sess ON sess.institute_id = i.id
+            GROUP BY i.id, i.name, i.code, i.address, i.created_at
+            ORDER BY i.id ASC
+        """)
+        breakdown_rows = cur.fetchall()
+
+        institutes_data = []
+        for row in breakdown_rows:
+            # Also fetch primary admin email
+            cur.execute("SELECT email, name, phone FROM user WHERE institute_id = %s AND role = 'ADMIN' LIMIT 1", (row[0],))
+            admin_row = cur.fetchone()
+            institutes_data.append({
+                'id': row[0],
+                'name': row[1],
+                'code': row[2],
+                'address': row[3],
+                'created_at': str(row[4]) if row[4] else None,
+                'admin_count': row[5],
+                'teacher_count': row[6],
+                'student_count': row[7],
+                'session_count': row[8],
+                'admin_email': admin_row[0] if admin_row else 'None',
+                'admin_name': admin_row[1] if admin_row else 'None',
+                'admin_phone': admin_row[2] if admin_row else 'None'
+            })
+
+        return jsonify({
+            'kpis': {
+                'total_institutes': total_institutes,
+                'total_admins': total_admins,
+                'total_teachers': total_teachers,
+                'total_students': total_students,
+                'total_sessions': total_sessions,
+                'total_attendance': total_attendance
+            },
+            'institutes': institutes_data
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in master_overview: {e}")
+        return jsonify({'message': f'Failed to load master overview: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+@app.route('/master/all_users', methods=['GET'])
+def master_all_users():
+    """
+    Returns complete global directory of users (Admins, Teachers, Students)
+    tagged by their respective institute.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        role = token_role
+        if not role and user_id:
+            cur.execute("SELECT role FROM user WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            if r:
+                role = r[0]
+
+        if role != 'SUPERADMIN':
+            return jsonify({'message': 'Forbidden: Master Admin privileges required.'}), 403
+
+        # Users table (Admins, Teachers)
+        cur.execute("""
+            SELECT u.id, u.name, u.email, u.phone, u.role, u.institute_id, i.name as institute_name, i.code as institute_code
+            FROM user u
+            LEFT JOIN institute i ON i.id = u.institute_id
+            WHERE u.role != 'SUPERADMIN'
+            ORDER BY u.institute_id ASC, u.id ASC
+        """)
+        staff_rows = cur.fetchall()
+        staff = [
+            {
+                'id': r[0],
+                'name': r[1],
+                'email': r[2],
+                'phone': r[3],
+                'role': r[4],
+                'institute_id': r[5],
+                'institute_name': r[6] or 'Unassigned',
+                'institute_code': r[7] or 'N/A'
+            }
+            for r in staff_rows
+        ]
+
+        # Students table
+        cur.execute("""
+            SELECT s.id, s.name, s.class, s.email, s.phone, s.institute_id, i.name as institute_name, i.code as institute_code
+            FROM student s
+            LEFT JOIN institute i ON i.id = s.institute_id
+            ORDER BY s.institute_id ASC, s.id ASC
+        """)
+        student_rows = cur.fetchall()
+        students = [
+            {
+                'id': r[0],
+                'name': r[1],
+                'class': r[2],
+                'email': r[3],
+                'phone': r[4],
+                'role': 'STUDENT',
+                'institute_id': r[5],
+                'institute_name': r[6] or 'Unassigned',
+                'institute_code': r[7] or 'N/A'
+            }
+            for r in student_rows
+        ]
+
+        return jsonify({
+            'staff': staff,
+            'students': students,
+            'total_count': len(staff) + len(students)
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in master_all_users: {e}")
+        return jsonify({'message': f'Failed to load all users: {str(e)}'}), 500
     finally:
         if cur:
             cur.close()

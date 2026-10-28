@@ -13,6 +13,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  Crown,
 } from 'lucide-react';
 import { getSavedUser, clearUser, UserSession } from '@/lib/api';
 import { useTheme } from '@/context/ThemeContext';
@@ -36,7 +37,10 @@ export default function Navbar() {
     router.push('/login');
   };
 
+  const isMaster = user?.role === 'SUPERADMIN';
+
   const navLinks = [
+    ...(isMaster ? [{ href: '/master', label: '👑 Master Portal', icon: Crown }] : []),
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/sessions', label: 'Sessions & QR', icon: QrCode },
     { href: '/students', label: 'Students', icon: GraduationCap },

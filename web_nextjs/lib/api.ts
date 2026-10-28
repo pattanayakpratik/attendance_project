@@ -5,7 +5,7 @@ export interface UserSession {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'TEACHER' | 'STUDENT';
+  role: 'ADMIN' | 'TEACHER' | 'STUDENT' | 'SUPERADMIN';
   phone?: string;
   class?: string;
   token?: string;
