@@ -22,9 +22,14 @@ import {
   Layers,
   ChevronRight,
   Clock,
-  X
+  X,
+  School,
+  Building2,
+  Briefcase
 } from 'lucide-react';
 import { apiRequest, getSavedUser } from '@/lib/api';
+
+type SectorType = 'COLLEGE' | 'SCHOOL' | 'COACHING';
 
 interface Student {
   id: number;
@@ -62,6 +67,9 @@ export default function StudentsPage() {
   const [batchesList, setBatchesList] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Sector Mode: College vs School vs Coaching
+  const [sectorType, setSectorType] = useState<SectorType>('COLLEGE');
+
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPromoteModal, setShowPromoteModal] = useState(false);
@@ -76,19 +84,25 @@ export default function StudentsPage() {
 
   // Add Student Form States
   const [newName, setNewName] = useState('');
-  const [newCourse, setNewCourse] = useState('CSE');
-  const [newBatch, setNewBatch] = useState('2026-2030 CSE Batch');
-  const [newSemester, setNewSemester] = useState('Sem 1');
+  const [newId, setNewId] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('123456');
-  const [newId, setNewId] = useState('');
+
+  // Sector Dynamic Fields for Add
+  const [newCourse, setNewCourse] = useState('CSE');
+  const [newBatch, setNewBatch] = useState('2026-2030 CSE Batch');
+  const [newTerm, setNewTerm] = useState('Sem 1');
+  const [newSection, setNewSection] = useState('Section A');
+  const [newAcademicYear, setNewAcademicYear] = useState('2026-2027');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Promote Batch Form States
+  const [promoteSector, setPromoteSector] = useState<SectorType>('COLLEGE');
   const [promoteBatchName, setPromoteBatchName] = useState('');
   const [promoteCourse, setPromoteCourse] = useState('');
-  const [promoteTargetSemester, setPromoteTargetSemester] = useState('Sem 2');
+  const [promoteTargetTerm, setPromoteTargetTerm] = useState('Sem 2');
+  const [promoteTargetSection, setPromoteTargetSection] = useState('Section A');
   const [promoteAcademicYear, setPromoteAcademicYear] = useState('2026-2027');
   const [selectedStudentIdsForPromotion, setSelectedStudentIdsForPromotion] = useState<number[]>([]);
   const [isPromoting, setIsPromoting] = useState(false);
@@ -109,33 +123,33 @@ export default function StudentsPage() {
     {
       id: 101,
       name: 'Emma Johnson',
-      class: '2026-2030 CSE Batch - Sem 1',
-      course: 'CSE',
-      batch: '2026-2030 CSE Batch',
-      semester: 'Sem 1',
+      class: 'Class 10-A (2025-2026)',
+      course: 'Standard K-12',
+      batch: 'Class 10-A',
+      semester: 'Class 10',
       email: 'emma@school.com',
       phone: '+91 9381075071',
       status: 'ACTIVE',
     },
     {
       id: 102,
-      name: 'Robert Brown',
-      class: '2025-2029 ECE Batch - Sem 3',
-      course: 'ECE',
-      batch: '2025-2029 ECE Batch',
-      semester: 'Sem 3',
-      email: 'robert@school.com',
+      name: 'Rahul Verma',
+      class: 'IIT-JEE Prep - Evening Batch (Phase 2)',
+      course: 'IIT-JEE Prep',
+      batch: 'Evening 6-8 PM Batch',
+      semester: 'Phase 2',
+      email: 'rahul@coaching.com',
       phone: '+91 9088552381',
       status: 'ACTIVE',
     },
     {
       id: 103,
       name: 'David Wilson',
-      class: '2024-2028 ME Batch - Sem 5',
-      course: 'ME',
-      batch: '2024-2028 ME Batch',
-      semester: 'Sem 5',
-      email: 'david@school.com',
+      class: 'Full Stack Python - March Cohort (Phase 1)',
+      course: 'Tech Bootcamp',
+      batch: 'March 2026 Cohort',
+      semester: 'Phase 1',
+      email: 'david@bootcamp.com',
       phone: '+91 7338872501',
       status: 'LEFT',
     },
@@ -204,7 +218,7 @@ export default function StudentsPage() {
     setFilteredStudents(result);
   }, [searchQuery, selectedStatusTab, selectedBatchFilter, students]);
 
-  // Open History Modal
+  // Open Academic History Modal
   const handleOpenHistory = async (st: Student) => {
     setSelectedStudentForHistory(st);
     setShowHistoryModal(true);
@@ -217,50 +231,54 @@ export default function StudentsPage() {
     if (res.ok && res.data && (res.data as any).history) {
       setStudentHistoryData((res.data as any).history);
     } else {
-      // Fallback preview
+      // Fallback timeline preview
       setStudentHistoryData([
         {
           history_id: 1,
-          course: st.course || 'CSE',
-          batch: st.batch || '2026-2030 CSE Batch',
-          semester: 'Sem 1',
-          class_name: `${st.batch || '2026-2030 CSE Batch'} - Sem 1`,
-          academic_year: '2026-2027',
+          course: st.course || 'Core Program',
+          batch: st.batch || st.class,
+          semester: 'Term 1 / Sem 1',
+          class_name: `${st.batch || st.class} (Term 1)`,
+          academic_year: '2025-2026',
           status: 'COMPLETED',
-          promoted_at: '2026-06-15',
+          promoted_at: '2026-04-10',
           attended_sessions: 42,
           total_sessions: 45,
           attendance_percentage: 93.3,
         },
         {
           history_id: 2,
-          course: st.course || 'CSE',
-          batch: st.batch || '2026-2030 CSE Batch',
-          semester: st.semester || 'Sem 2',
+          course: st.course || 'Core Program',
+          batch: st.batch || st.class,
+          semester: st.semester || 'Term 2 / Active',
           class_name: st.class,
           academic_year: '2026-2027',
           status: 'ACTIVE',
           promoted_at: '2026-10-28',
-          attended_sessions: 18,
+          attended_sessions: 19,
           total_sessions: 20,
-          attendance_percentage: 90.0,
+          attendance_percentage: 95.0,
         },
       ]);
     }
   };
 
-  // Open Batch Promotion Modal
+  // Open Batch / Grade / Phase Promotion Modal
   const handleOpenPromoteModal = () => {
-    const defaultBatch = batchesList[0] || '2026-2030 CSE Batch';
+    const defaultBatch = batchesList[0] || (students[0]?.batch) || 'Class 9-A';
     setPromoteBatchName(defaultBatch);
-    const studentsInBatch = students.filter((s) => s.batch === defaultBatch && (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
+    const studentsInBatch = students.filter(
+      (s) => s.batch === defaultBatch && (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
+    );
     setSelectedStudentIdsForPromotion(studentsInBatch.map((s) => s.id));
     setShowPromoteModal(true);
   };
 
   const handleBatchSelectionChange = (batchName: string) => {
     setPromoteBatchName(batchName);
-    const inBatch = students.filter((s) => s.batch === batchName && (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
+    const inBatch = students.filter(
+      (s) => s.batch === batchName && (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
+    );
     setSelectedStudentIdsForPromotion(inBatch.map((s) => s.id));
   };
 
@@ -273,7 +291,9 @@ export default function StudentsPage() {
   };
 
   const handleSelectAllInBatch = () => {
-    const inBatch = students.filter((s) => s.batch === promoteBatchName && (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE');
+    const inBatch = students.filter(
+      (s) => s.batch === promoteBatchName && (s.status || 'ACTIVE').toUpperCase() === 'ACTIVE'
+    );
     if (selectedStudentIdsForPromotion.length === inBatch.length) {
       setSelectedStudentIdsForPromotion([]);
     } else {
@@ -281,12 +301,24 @@ export default function StudentsPage() {
     }
   };
 
-  // Execute Batch Promotion
+  // Execute Promotion (College Sem, School Grade, or Tuition Phase)
   const handleExecutePromotion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedStudentIdsForPromotion.length === 0) {
-      alert('Please select at least one student to promote to the next semester.');
+      alert('Please select at least one student to promote.');
       return;
+    }
+
+    let targetClassName = '';
+    let targetTerm = promoteTargetTerm;
+
+    if (promoteSector === 'COLLEGE') {
+      targetClassName = `${promoteBatchName} - ${promoteTargetTerm}`;
+    } else if (promoteSector === 'SCHOOL') {
+      targetClassName = `${promoteTargetTerm}-${promoteTargetSection} (${promoteAcademicYear})`;
+      targetTerm = `${promoteTargetTerm}-${promoteTargetSection}`;
+    } else {
+      targetClassName = `${promoteBatchName} (${promoteTargetTerm})`;
     }
 
     setIsPromoting(true);
@@ -296,7 +328,8 @@ export default function StudentsPage() {
         student_ids: selectedStudentIdsForPromotion,
         batch: promoteBatchName,
         course: promoteCourse,
-        to_semester: promoteTargetSemester,
+        to_semester: targetTerm,
+        target_class: targetClassName,
         academic_year: promoteAcademicYear,
       }),
     });
@@ -305,26 +338,26 @@ export default function StudentsPage() {
     if (res.ok) {
       setShowPromoteModal(false);
       setFeedbackToast(
-        `Successfully promoted ${selectedStudentIdsForPromotion.length} students of "${promoteBatchName}" to ${promoteTargetSemester}! Past semester data permanently archived.`
+        `Successfully promoted ${selectedStudentIdsForPromotion.length} students to ${targetClassName}! Past records permanently archived.`
       );
       setTimeout(() => setFeedbackToast(null), 5000);
       fetchStudents();
     } else {
-      // Local preview fallback
-      const targetClass = `${promoteBatchName} - ${promoteTargetSemester}`;
+      // Local fallback
       setStudents((prev) =>
         prev.map((s) =>
           selectedStudentIdsForPromotion.includes(s.id)
-            ? { ...s, semester: promoteTargetSemester, class: targetClass }
+            ? { ...s, semester: targetTerm, class: targetClassName }
             : s
         )
       );
       setShowPromoteModal(false);
-      setFeedbackToast(`Promoted to ${promoteTargetSemester} (offline mode).`);
+      setFeedbackToast(`Promoted to ${targetClassName} (offline mode).`);
       setTimeout(() => setFeedbackToast(null), 5000);
     }
   };
 
+  // Toggle Active / Left Status
   const handleToggleStudentStatus = async (st: Student) => {
     const isCurrentlyLeft = (st.status || 'ACTIVE').toUpperCase() === 'LEFT';
     const targetStatus = isCurrentlyLeft ? 'ACTIVE' : 'LEFT';
@@ -362,22 +395,37 @@ export default function StudentsPage() {
     }
   };
 
+  // Enroll Student
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = getSavedUser();
     setIsSubmitting(true);
 
-    const generatedClass = `${newBatch.trim()} - ${newSemester.trim()}`;
+    let generatedClass = '';
+    let batchLabel = newBatch.trim();
+    let termLabel = newTerm.trim();
+
+    if (sectorType === 'COLLEGE') {
+      generatedClass = `${newBatch.trim()} - ${newTerm.trim()}`;
+    } else if (sectorType === 'SCHOOL') {
+      batchLabel = `${newTerm.trim()}-${newSection.trim()}`;
+      generatedClass = `${newTerm.trim()}-${newSection.trim()} (${newAcademicYear.trim()})`;
+      termLabel = newTerm.trim();
+    } else {
+      // COACHING / TUITION
+      generatedClass = `${newBatch.trim()} (${newTerm.trim()})`;
+    }
 
     const res = await apiRequest('/add_student', {
       method: 'POST',
       body: JSON.stringify({
         id: parseInt(newId, 10),
         name: newName.trim(),
-        course: newCourse.trim().toUpperCase(),
-        batch: newBatch.trim(),
-        semester: newSemester.trim(),
+        course: newCourse.trim(),
+        batch: batchLabel,
+        semester: termLabel,
         class: generatedClass,
+        academic_year: newAcademicYear.trim(),
         email: newEmail.trim().toLowerCase(),
         phone: newPhone.trim(),
         password: newPassword.trim(),
@@ -394,15 +442,15 @@ export default function StudentsPage() {
       setNewEmail('');
       setNewPhone('');
       setNewId('');
-      setFeedbackToast(`Enrolled "${newName}" into ${newBatch} (${newSemester}) successfully!`);
+      setFeedbackToast(`Enrolled "${newName}" into ${generatedClass} successfully!`);
       setTimeout(() => setFeedbackToast(null), 4000);
     } else {
       const newSt: Student = {
         id: parseInt(newId, 10) || Date.now(),
         name: newName,
         course: newCourse,
-        batch: newBatch,
-        semester: newSemester,
+        batch: batchLabel,
+        semester: termLabel,
         class: generatedClass,
         email: newEmail,
         phone: newPhone,
@@ -435,10 +483,10 @@ export default function StudentsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-              Student Directory & Batches
+              Student Directory & Cohorts
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Multi-course batch management (e.g. 2026-2030 CSE Batch) and seamless semester progression.
+              Supports Colleges (Semesters), Schools (Grades K-12), and Private Tuitions (Batches/Phases).
             </p>
           </div>
 
@@ -449,7 +497,7 @@ export default function StudentsPage() {
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-2xl shadow-lg shadow-indigo-600/20 transition transform hover:-translate-y-0.5"
             >
               <GraduationCap className="w-4 h-4" />
-              <span>Promote Batch to Next Sem</span>
+              <span>Promote Cohort / Grade / Sem</span>
             </button>
 
             {/* Enroll Student Button */}
@@ -495,7 +543,7 @@ export default function StudentsPage() {
                   : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
-              Left / Inactive ({leftCount})
+              Left / Alumni ({leftCount})
             </button>
           </div>
 
@@ -503,14 +551,14 @@ export default function StudentsPage() {
           {batchesList.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5 text-[#2D8885]" /> Batch:
+                <Layers className="w-3.5 h-3.5 text-[#2D8885]" /> Cohort / Batch:
               </span>
               <select
                 value={selectedBatchFilter}
                 onChange={(e) => setSelectedBatchFilter(e.target.value)}
                 className="px-3 py-1.5 bg-white dark:bg-[#132429] border border-slate-200/80 dark:border-[#1E373E] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#2D8885]"
               >
-                <option value="ALL">All Batches</option>
+                <option value="ALL">All Cohorts / Batches</option>
                 {batchesList.map((b) => (
                   <option key={b} value={b}>
                     {b}
@@ -530,7 +578,7 @@ export default function StudentsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by student name, roll number, course (e.g. CSE), batch (e.g. 2026-2030), or semester..."
+            placeholder="Search by student name, roll number, course, batch (e.g. 2026-2030 or Class 10), or timing slot..."
             className="w-full pl-11 pr-4 py-3 bg-white dark:bg-[#132429] border border-slate-200/80 dark:border-[#1E373E] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl text-xs sm:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2D8885]/30 focus:border-[#2D8885] transition"
           />
         </div>
@@ -540,7 +588,7 @@ export default function StudentsPage() {
           {isLoading ? (
             <div className="py-20 text-center">
               <Loader2 className="w-8 h-8 text-[#2D8885] dark:text-teal-400 animate-spin mx-auto" />
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium">Loading batch roster...</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium">Loading student roster...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="bg-white dark:bg-[#132429] rounded-3xl p-12 text-center border border-slate-200 dark:border-[#1E373E]">
@@ -582,7 +630,7 @@ export default function StudentsPage() {
                         {/* Status Badge */}
                         {isLeft ? (
                           <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
-                            Left Institute
+                            Left / Alumni
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
@@ -590,7 +638,7 @@ export default function StudentsPage() {
                           </span>
                         )}
 
-                        {/* Batch Tag */}
+                        {/* Cohort Tag */}
                         {st.batch && (
                           <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold flex items-center gap-1">
                             <Layers className="w-3 h-3" />
@@ -598,7 +646,7 @@ export default function StudentsPage() {
                           </span>
                         )}
 
-                        {/* Semester Tag */}
+                        {/* Level / Semester Tag */}
                         {st.semester && (
                           <span className="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/60 text-[#2D8885] dark:text-teal-300 text-[10px] font-bold">
                             {st.semester}
@@ -632,10 +680,10 @@ export default function StudentsPage() {
                       type="button"
                       onClick={() => handleOpenHistory(st)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition"
-                      title="View complete semester timeline & historical attendance"
+                      title="View complete progression timeline & past attendance"
                     >
                       <History className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>Semesters</span>
+                      <span>Timeline</span>
                     </button>
 
                     {/* Active/Left Toggle */}
@@ -671,21 +719,21 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* ----------------- MODAL 1: BATCH SEMESTER PROMOTION ----------------- */}
+      {/* ----------------- MODAL 1: BATCH / GRADE / PHASE PROMOTION ----------------- */}
       {showPromoteModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#132429] rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl border border-white dark:border-[#1E373E] transition-all">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                    Batch Semester Promotion
+                    Cohort & Level Progression
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Move an entire batch (e.g. 2026-2030 CSE Batch) to the next semester.
+                    Move an entire cohort to the next semester, grade, or training phase.
                   </p>
                 </div>
               </div>
@@ -697,12 +745,63 @@ export default function StudentsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleExecutePromotion} className="space-y-4 mt-4">
-              {/* Batch & Semester Selection */}
+            {/* Sector Mode Selector in Promotion Modal */}
+            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-[#0E1E22] rounded-2xl mb-4 border border-slate-200/70 dark:border-[#1A3138]">
+              <button
+                type="button"
+                onClick={() => {
+                  setPromoteSector('COLLEGE');
+                  setPromoteTargetTerm('Sem 2');
+                }}
+                className={`py-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition ${
+                  promoteSector === 'COLLEGE'
+                    ? 'bg-white dark:bg-[#1A343B] text-indigo-600 dark:text-indigo-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>College Sem</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPromoteSector('SCHOOL');
+                  setPromoteTargetTerm('Class 10');
+                }}
+                className={`py-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition ${
+                  promoteSector === 'SCHOOL'
+                    ? 'bg-white dark:bg-[#1A343B] text-indigo-600 dark:text-indigo-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <School className="w-3.5 h-3.5" />
+                <span>School Grade</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPromoteSector('COACHING');
+                  setPromoteTargetTerm('Phase 2');
+                }}
+                className={`py-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition ${
+                  promoteSector === 'COACHING'
+                    ? 'bg-white dark:bg-[#1A343B] text-indigo-600 dark:text-indigo-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>Tuition / Phase</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleExecutePromotion} className="space-y-4">
+              {/* Batch & Target Level Fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Select Batch to Promote *
+                    Current Cohort / Batch *
                   </label>
                   <select
                     value={promoteBatchName}
@@ -719,23 +818,57 @@ export default function StudentsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Target Next Semester *
+                    {promoteSector === 'COLLEGE'
+                      ? 'Target Semester *'
+                      : promoteSector === 'SCHOOL'
+                      ? 'Target Grade *'
+                      : 'Target Module / Phase *'}
                   </label>
-                  <select
-                    value={promoteTargetSemester}
-                    onChange={(e) => setPromoteTargetSemester(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="Sem 2">Sem 2</option>
-                    <option value="Sem 3">Sem 3</option>
-                    <option value="Sem 4">Sem 4</option>
-                    <option value="Sem 5">Sem 5</option>
-                    <option value="Sem 6">Sem 6</option>
-                    <option value="Sem 7">Sem 7</option>
-                    <option value="Sem 8">Sem 8</option>
-                  </select>
+                  <input
+                    type="text"
+                    value={promoteTargetTerm}
+                    onChange={(e) => setPromoteTargetTerm(e.target.value)}
+                    placeholder={
+                      promoteSector === 'COLLEGE'
+                        ? 'e.g. Sem 2'
+                        : promoteSector === 'SCHOOL'
+                        ? 'e.g. Class 10'
+                        : 'e.g. Phase 2 or Advanced'
+                    }
+                    required
+                    className="w-full px-3 py-2 font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
                 </div>
               </div>
+
+              {promoteSector === 'SCHOOL' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Target Section
+                    </label>
+                    <input
+                      type="text"
+                      value={promoteTargetSection}
+                      onChange={(e) => setPromoteTargetSection(e.target.value)}
+                      placeholder="e.g. Section A"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      New Academic Session
+                    </label>
+                    <input
+                      type="text"
+                      value={promoteAcademicYear}
+                      onChange={(e) => setPromoteAcademicYear(e.target.value)}
+                      placeholder="e.g. 2026-2027"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Roster of Students to Promote */}
               <div>
@@ -754,7 +887,7 @@ export default function StudentsPage() {
                   </button>
                 </div>
 
-                <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-[#22424B] rounded-2xl p-2 space-y-1.5 bg-slate-50/50 dark:bg-[#0E1E22]">
+                <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-[#22424B] rounded-2xl p-2 space-y-1.5 bg-slate-50/50 dark:bg-[#0E1E22]">
                   {candidatesForPromotion.length === 0 ? (
                     <p className="text-xs text-slate-400 p-3 text-center">No active students found in this batch.</p>
                   ) : (
@@ -780,17 +913,17 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              {/* Preservation Notice */}
-              <div className="p-3 rounded-2xl bg-teal-50/80 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60 flex items-start gap-2">
+              {/* Immutable Preservation Notice */}
+              <div className="p-2.5 rounded-2xl bg-teal-50/80 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60 flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#2D8885] dark:text-teal-300 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-teal-900 dark:text-teal-200 leading-tight">
-                  <span className="font-bold">Permanent Historical Audit:</span> All previous semester attendance
-                  records, geofence logs, and sessions remain completely frozen and preserved.
+                <p className="text-[10px] text-teal-900 dark:text-teal-200 leading-tight">
+                  <span className="font-bold">Permanent Historical Audit:</span> All previous attendance records,
+                  timestamps, and QR sessions remain completely frozen and preserved.
                 </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowPromoteModal(false)}
@@ -806,12 +939,12 @@ export default function StudentsPage() {
                   {isPromoting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Promoting Batch...</span>
+                      <span>Promoting...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Promote ({selectedStudentIdsForPromotion.length}) to {promoteTargetSemester}</span>
+                      <span>Promote ({selectedStudentIdsForPromotion.length}) Students</span>
                     </>
                   )}
                 </button>
@@ -821,7 +954,7 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* ----------------- MODAL 2: ACADEMIC HISTORY TIMELINE ----------------- */}
+      {/* ----------------- MODAL 2: ACADEMIC JOURNEY TIMELINE ----------------- */}
       {showHistoryModal && selectedStudentForHistory && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#132429] rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-white dark:border-[#1E373E] transition-all">
@@ -829,7 +962,7 @@ export default function StudentsPage() {
               <div>
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   <History className="w-5 h-5 text-indigo-500" />
-                  <span>Academic Semester Journey</span>
+                  <span>Academic Journey Timeline</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {selectedStudentForHistory.name} • Roll ID: {selectedStudentForHistory.id}
@@ -846,10 +979,10 @@ export default function StudentsPage() {
             {isHistoryLoading ? (
               <div className="py-12 text-center">
                 <Loader2 className="w-6 h-6 animate-spin text-[#2D8885] mx-auto mb-2" />
-                <p className="text-xs text-slate-400">Loading semester progression records...</p>
+                <p className="text-xs text-slate-400">Loading historical timeline...</p>
               </div>
             ) : studentHistoryData.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center">No previous semester history on record.</p>
+              <p className="text-xs text-slate-400 py-8 text-center">No previous history on record.</p>
             ) : (
               <div className="space-y-3">
                 {studentHistoryData.map((item, idx) => {
@@ -872,13 +1005,13 @@ export default function StudentsPage() {
                               : 'bg-[#2D8885] text-white shadow'
                           }`}
                         >
-                          {item.semester ? item.semester.replace('Sem ', 'S') : `S${idx + 1}`}
+                          {idx + 1}
                         </div>
 
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-xs text-slate-800 dark:text-slate-100">
-                              {item.semester || `Semester ${idx + 1}`}
+                              {item.semester || `Term ${idx + 1}`}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
@@ -923,14 +1056,73 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* ----------------- MODAL 3: ENROLL STUDENT WITH COURSE & BATCH ----------------- */}
+      {/* ----------------- MODAL 3: ENROLL STUDENT (MULTI-SECTOR) ----------------- */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#132429] rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-white dark:border-[#1E373E] transition-colors">
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Enroll New Student</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-              Assign to a specific Course & Batch (e.g. 2026-2030 CSE Batch) and starting semester.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Select your institution type to format the class roster.
             </p>
+
+            {/* Sector Type Switcher in Add Modal */}
+            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-[#0E1E22] rounded-2xl mb-4 border border-slate-200/70 dark:border-[#1A3138]">
+              <button
+                type="button"
+                onClick={() => {
+                  setSectorType('COLLEGE');
+                  setNewCourse('CSE');
+                  setNewBatch('2026-2030 CSE Batch');
+                  setNewTerm('Sem 1');
+                }}
+                className={`py-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition ${
+                  sectorType === 'COLLEGE'
+                    ? 'bg-white dark:bg-[#1A343B] text-[#2D8885] dark:text-teal-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>College</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSectorType('SCHOOL');
+                  setNewCourse('Standard K-12');
+                  setNewBatch('Class 10-A');
+                  setNewTerm('Class 10');
+                  setNewSection('Section A');
+                  setNewAcademicYear('2026-2027');
+                }}
+                className={`py-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition ${
+                  sectorType === 'SCHOOL'
+                    ? 'bg-white dark:bg-[#1A343B] text-[#2D8885] dark:text-teal-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <School className="w-3.5 h-3.5" />
+                <span>School</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSectorType('COACHING');
+                  setNewCourse('IIT-JEE Prep');
+                  setNewBatch('Evening 6-8 PM Batch');
+                  setNewTerm('Phase 1');
+                }}
+                className={`py-1.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition ${
+                  sectorType === 'COACHING'
+                    ? 'bg-white dark:bg-[#1A343B] text-[#2D8885] dark:text-teal-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>Tuition</span>
+              </button>
+            </div>
 
             <form onSubmit={handleAddStudent} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -942,7 +1134,7 @@ export default function StudentsPage() {
                     type="number"
                     value={newId}
                     onChange={(e) => setNewId(e.target.value)}
-                    placeholder="e.g. 302"
+                    placeholder="e.g. 105"
                     required
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
                   />
@@ -956,64 +1148,156 @@ export default function StudentsPage() {
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Aarav Sharma"
+                    placeholder="e.g. Emma Johnson"
                     required
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
                   />
                 </div>
               </div>
 
-              {/* Course & Batch */}
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Course / Branch *
-                  </label>
-                  <input
-                    type="text"
-                    value={newCourse}
-                    onChange={(e) => setNewCourse(e.target.value.toUpperCase())}
-                    placeholder="e.g. CSE"
-                    required
-                    className="w-full px-3 py-2 uppercase font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
-                  />
+              {/* Dynamic Sector Form Fields */}
+              {sectorType === 'COLLEGE' && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Course *
+                    </label>
+                    <input
+                      type="text"
+                      value={newCourse}
+                      onChange={(e) => setNewCourse(e.target.value.toUpperCase())}
+                      placeholder="e.g. CSE"
+                      required
+                      className="w-full px-3 py-2 uppercase font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Batch Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newBatch}
+                      onChange={(e) => setNewBatch(e.target.value)}
+                      placeholder="e.g. 2026-2030 CSE Batch"
+                      required
+                      className="w-full px-3 py-2 font-semibold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Semester *
+                    </label>
+                    <input
+                      type="text"
+                      value={newTerm}
+                      onChange={(e) => setNewTerm(e.target.value)}
+                      placeholder="e.g. Sem 1"
+                      required
+                      className="w-full px-3 py-2 font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
                 </div>
+              )}
 
-                <div className="col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Batch Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newBatch}
-                    onChange={(e) => setNewBatch(e.target.value)}
-                    placeholder="e.g. 2026-2030 CSE Batch"
-                    required
-                    className="w-full px-3 py-2 font-semibold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
-                  />
+              {sectorType === 'SCHOOL' && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Grade / Class *
+                    </label>
+                    <input
+                      type="text"
+                      value={newTerm}
+                      onChange={(e) => setNewTerm(e.target.value)}
+                      placeholder="e.g. Class 10"
+                      required
+                      className="w-full px-3 py-2 font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Section *
+                    </label>
+                    <input
+                      type="text"
+                      value={newSection}
+                      onChange={(e) => setNewSection(e.target.value)}
+                      placeholder="e.g. Section A"
+                      required
+                      className="w-full px-3 py-2 font-semibold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Session Year
+                    </label>
+                    <input
+                      type="text"
+                      value={newAcademicYear}
+                      onChange={(e) => setNewAcademicYear(e.target.value)}
+                      placeholder="e.g. 2026-2027"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Semester & Contact */}
+              {sectorType === 'COACHING' && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Program / Subject *
+                    </label>
+                    <input
+                      type="text"
+                      value={newCourse}
+                      onChange={(e) => setNewCourse(e.target.value)}
+                      placeholder="e.g. IIT-JEE Prep"
+                      required
+                      className="w-full px-3 py-2 font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Batch / Time Slot *
+                    </label>
+                    <input
+                      type="text"
+                      value={newBatch}
+                      onChange={(e) => setNewBatch(e.target.value)}
+                      placeholder="e.g. Evening 6-8 PM"
+                      required
+                      className="w-full px-3 py-2 font-semibold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      Module / Phase *
+                    </label>
+                    <input
+                      type="text"
+                      value={newTerm}
+                      onChange={(e) => setNewTerm(e.target.value)}
+                      placeholder="e.g. Phase 1"
+                      required
+                      className="w-full px-3 py-2 font-bold bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Starting Semester *
-                  </label>
-                  <select
-                    value={newSemester}
-                    onChange={(e) => setNewSemester(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
-                  >
-                    <option value="Sem 1">Sem 1</option>
-                    <option value="Sem 2">Sem 2</option>
-                    <option value="Sem 3">Sem 3</option>
-                    <option value="Sem 4">Sem 4</option>
-                    <option value="Sem 5">Sem 5</option>
-                    <option value="Sem 6">Sem 6</option>
-                    <option value="Sem 7">Sem 7</option>
-                    <option value="Sem 8">Sem 8</option>
-                  </select>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="student@domain.com"
+                    required
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
+                  />
                 </div>
 
                 <div>
@@ -1030,31 +1314,17 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">Email *</label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="aarav@school.com"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Password *
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1A3138] border border-slate-200 dark:border-[#22424B] rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#2D8885]"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3">
@@ -1071,7 +1341,7 @@ export default function StudentsPage() {
                   className="px-5 py-2 bg-[#2D8885] dark:bg-teal-600 hover:bg-[#236E6C] dark:hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Enroll in Batch</span>
+                  <span>Enroll Student</span>
                 </button>
               </div>
             </form>
