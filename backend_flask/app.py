@@ -2609,7 +2609,7 @@ def promote_batch():
         if requester_role not in ('ADMIN', 'TEACHER', 'SUPERADMIN'):
             return jsonify({'message': 'Forbidden: Only administrators and teachers can promote batches.'}), 403
 
-        target_class_name = f"{batch} - {to_semester}" if batch else to_semester
+        target_class_name = (data.get('target_class') or (f"{batch} - {to_semester}" if batch else to_semester)).strip()
         promoted_count = 0
 
         for sid in student_ids:
