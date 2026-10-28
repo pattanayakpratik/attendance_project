@@ -137,6 +137,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (user.instituteName != null && user.instituteName!.isNotEmpty) ...[
+                      _buildInfoItem(context, 'Institute', user.instituteName!),
+                      Divider(height: 24, color: isDark ? const Color(0xFF1E373E) : AppColors.borderLight),
+                    ],
                     _buildInfoItem(context, 'Email', user.email),
                     Divider(height: 24, color: isDark ? const Color(0xFF1E373E) : AppColors.borderLight),
                     _buildInfoItem(context, 'Phone', user.phone.isNotEmpty ? user.phone : '+91 9876543210'),

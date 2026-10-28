@@ -9,6 +9,9 @@ export interface UserSession {
   phone?: string;
   class?: string;
   token?: string;
+  institute_id?: number;
+  institute_name?: string;
+  institute_code?: string;
 }
 
 export function getSavedUser(): UserSession | null {

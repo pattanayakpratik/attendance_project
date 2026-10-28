@@ -112,7 +112,9 @@ export default function Navbar() {
                   </div>
                   <div className="hidden sm:block text-left leading-tight">
                     <div className="font-semibold text-xs text-white">{user.name}</div>
-                    <div className="text-[10px] text-teal-200 dark:text-teal-400">{user.role}</div>
+                    <div className="text-[10px] text-teal-200 dark:text-teal-400">
+                      {user.role} {user.institute_name ? `• ${user.institute_name}` : ''}
+                    </div>
                   </div>
                 </Link>
 

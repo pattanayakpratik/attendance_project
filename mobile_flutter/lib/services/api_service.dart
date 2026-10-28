@@ -41,6 +41,10 @@ class ApiService {
         UserModel user;
         final token = data['token'] as String?;
 
+        final instId = data['institute_id'] != null ? int.tryParse(data['institute_id'].toString()) : null;
+        final instName = data['institute_name'] as String?;
+        final instCode = data['institute_code'] as String?;
+
         if (role == UserRole.student) {
           user = UserModel(
             id: data['student_id'] is int ? data['student_id'] : int.tryParse(data['student_id'].toString()) ?? 1,
@@ -50,6 +54,9 @@ class ApiService {
             role: UserRole.student,
             studentClass: data['class'] ?? 'Class 10',
             token: token,
+            instituteId: instId,
+            instituteName: instName,
+            instituteCode: instCode,
           );
         } else {
           user = UserModel(
@@ -59,6 +66,9 @@ class ApiService {
             phone: data['phone'] ?? '',
             role: role,
             token: token,
+            instituteId: instId,
+            instituteName: instName,
+            instituteCode: instCode,
           );
         }
         await StorageService.saveUser(user);
