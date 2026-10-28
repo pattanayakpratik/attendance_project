@@ -3361,7 +3361,7 @@ def get_timetable():
         query_params = [inst_id]
 
         if detected_role == 'STUDENT':
-            # Student strictly views ONLY their class
+            # Student strictly views ONLY their class + institute breaks
             if not student_class and req_id:
                 cur.execute("SELECT class FROM student WHERE id = %s", (req_id,))
                 st_r = cur.fetchone()
@@ -3377,22 +3377,22 @@ def get_timetable():
                     'meta': {'classes': [], 'teachers': [], 'days': []}
                 }), 200
 
-            query_conditions.append("t.class_name = %s")
+            query_conditions.append("(t.class_name = %s OR t.class_name = 'ALL' OR t.is_break = TRUE)")
             query_params.append(student_class)
 
         elif detected_role == 'TEACHER':
-            # Teacher strictly views ONLY their assigned teaching lectures
+            # Teacher strictly views ONLY their assigned teaching lectures + institute breaks
             teacher_id = req_id
-            query_conditions.append("t.teacher_id = %s")
+            query_conditions.append("(t.teacher_id = %s OR t.is_break = TRUE)")
             query_params.append(teacher_id)
 
         else:
             # ADMIN / SUPERADMIN: Can view all and apply specific filters
             if filter_class:
-                query_conditions.append("t.class_name = %s")
+                query_conditions.append("(t.class_name = %s OR (t.is_break = TRUE AND t.class_name = 'ALL'))")
                 query_params.append(filter_class)
             if filter_teacher_id:
-                query_conditions.append("t.teacher_id = %s")
+                query_conditions.append("(t.teacher_id = %s OR (t.is_break = TRUE AND t.class_name = 'ALL'))")
                 query_params.append(int(filter_teacher_id))
 
         # Filter by day if requested
@@ -3405,7 +3405,9 @@ def get_timetable():
         sql = f"""
             SELECT t.id, t.institute_id, t.class_name, t.subject, t.teacher_id,
                    t.day_of_week, t.start_time, t.end_time, t.room_number, t.created_at,
-                   u.name as teacher_name, u.email as teacher_email
+                   u.name as teacher_name, u.email as teacher_email,
+                   COALESCE(t.slot_type, 'LECTURE') as slot_type,
+                   COALESCE(t.is_break, FALSE) as is_break
             FROM timetable t
             LEFT JOIN user u ON t.teacher_id = u.id
             {where_clause}
@@ -3439,8 +3441,10 @@ def get_timetable():
                 'end_time': r[7],
                 'room_number': r[8] or '',
                 'created_at': str(r[9]) if r[9] else '',
-                'teacher_name': r[10] or f"Teacher #{r[4]}",
-                'teacher_email': r[11] or ''
+                'teacher_name': r[10] or ('' if (r[13] or r[12] in ('BREAK', 'LUNCH')) else (f"Teacher #{r[4]}" if r[4] else '')),
+                'teacher_email': r[11] or '',
+                'slot_type': r[12] or 'LECTURE',
+                'is_break': bool(r[13])
             })
 
         # Fetch metadata (classes & teachers in institute) to assist UI filter dropdowns & slot creation
@@ -3500,14 +3504,28 @@ def add_timetable_slot():
     start_time = (data.get('start_time') or '').strip()
     end_time = (data.get('end_time') or '').strip()
     room_number = (data.get('room_number') or data.get('room') or '').strip()
-    teacher_id = data.get('teacher_id') or user_id
+    slot_type = (data.get('slot_type') or 'LECTURE').strip().upper()
+    is_break = bool(data.get('is_break') or slot_type in ('BREAK', 'LUNCH', 'RECESS', 'ASSEMBLY', 'INTERVAL'))
+    if is_break and slot_type not in ('LUNCH', 'ASSEMBLY'):
+        slot_type = 'BREAK'
+
+    teacher_id = data.get('teacher_id')
+    if not is_break and not teacher_id:
+        teacher_id = user_id
+
     inst_id = data.get('institute_id') or get_auth_institute_id() or 1
 
-    if not class_name or not subject or not day_of_week or not start_time or not end_time:
-        return jsonify({'message': 'Missing required fields: class_name, subject, day_of_week, start_time, and end_time are required.'}), 400
+    if is_break:
+        if not class_name:
+            class_name = 'ALL'
+        if not subject:
+            subject = 'Lunch Break' if slot_type == 'LUNCH' else 'Short Break / Recess'
+    else:
+        if not class_name or not subject or not teacher_id:
+            return jsonify({'message': 'Missing required fields: class_name, subject, and teacher_id are required for lectures.'}), 400
 
-    if not teacher_id:
-        return jsonify({'message': 'teacher_id is required.'}), 400
+    if not day_of_week or not start_time or not end_time:
+        return jsonify({'message': 'Missing required fields: day_of_week, start_time, and end_time are required.'}), 400
 
     # Ensure valid day of week capitalization
     day_normalized = day_of_week.capitalize()
@@ -3517,10 +3535,11 @@ def add_timetable_slot():
     cur = None
     try:
         cur = mysql.connection.cursor()
+        t_id_val = int(teacher_id) if (teacher_id and str(teacher_id).isdigit()) else None
         cur.execute("""
-            INSERT INTO timetable (institute_id, class_name, subject, teacher_id, day_of_week, start_time, end_time, room_number)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (inst_id, class_name, subject, int(teacher_id), matched_day, start_time, end_time, room_number))
+            INSERT INTO timetable (institute_id, class_name, subject, teacher_id, day_of_week, start_time, end_time, room_number, slot_type, is_break)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (inst_id, class_name, subject, t_id_val, matched_day, start_time, end_time, room_number, slot_type, is_break))
         slot_id = getattr(cur, 'lastrowid', None)
         if not slot_id:
             cur.execute("SELECT id FROM timetable WHERE institute_id = %s AND class_name = %s AND subject = %s ORDER BY id DESC LIMIT 1", (inst_id, class_name, subject))

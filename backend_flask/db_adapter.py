@@ -408,11 +408,13 @@ class ResilientMySQL:
                 institute_id INTEGER DEFAULT 1,
                 class_name TEXT NOT NULL,
                 subject TEXT NOT NULL,
-                teacher_id INTEGER NOT NULL,
+                teacher_id INTEGER,
                 day_of_week TEXT NOT NULL,
                 start_time TEXT NOT NULL,
                 end_time TEXT NOT NULL,
                 room_number TEXT,
+                slot_type TEXT DEFAULT 'LECTURE',
+                is_break INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
