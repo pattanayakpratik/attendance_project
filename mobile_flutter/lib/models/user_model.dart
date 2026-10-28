@@ -44,6 +44,9 @@ class UserModel {
   final UserRole role;
   final String? studentClass;
   final String? token;
+  final int? instituteId;
+  final String? instituteName;
+  final String? instituteCode;
 
   UserModel({
     required this.id,
@@ -53,6 +56,9 @@ class UserModel {
     required this.role,
     this.studentClass,
     this.token,
+    this.instituteId,
+    this.instituteName,
+    this.instituteCode,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {UserRole? defaultRole}) {
@@ -66,6 +72,9 @@ class UserModel {
           : (defaultRole ?? UserRole.student),
       studentClass: json['class'],
       token: json['token'],
+      instituteId: json['institute_id'] != null ? int.tryParse(json['institute_id'].toString()) : null,
+      instituteName: json['institute_name'],
+      instituteCode: json['institute_code'],
     );
   }
 
@@ -78,6 +87,9 @@ class UserModel {
       'role': role.apiValue,
       'class': studentClass,
       'token': token,
+      'institute_id': instituteId,
+      'institute_name': instituteName,
+      'institute_code': instituteCode,
     };
   }
 }

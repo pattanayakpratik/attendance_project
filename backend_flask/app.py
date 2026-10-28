@@ -46,7 +46,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from db_adapter import ResilientMySQL
 
-from auth import generate_auth_token, verify_auth_token, require_auth, get_auth_user_from_request
+from auth import generate_auth_token, verify_auth_token, require_auth, get_auth_user_from_request, get_auth_institute_id
 
 
 
@@ -192,9 +192,17 @@ def add_student():
 
         # FIX: Insert the hashed password
 
-        cur.execute("INSERT INTO student (id, name, class, email, phone, password) VALUES (%s, %s, %s, %s, %s, %s)",
+        inst_id = data.get('institute_id') or get_auth_institute_id()
+        if not inst_id and requesting_user_id:
+            cur.execute("SELECT institute_id FROM user WHERE id = %s", (requesting_user_id,))
+            r = cur.fetchone()
+            if r and r[0]:
+                inst_id = r[0]
+        if not inst_id:
+            inst_id = 1
 
-                    (student_id, name, class_name, email, phone, hashed_password))
+        cur.execute("INSERT INTO student (id, name, class, email, phone, password, institute_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (student_id, name, class_name, email, phone, hashed_password, inst_id))
 
         mysql.connection.commit()
 
@@ -328,13 +336,19 @@ def add_session():
 
 
 
+        inst_id = data.get('institute_id') or get_auth_institute_id()
+        if not inst_id and created_by:
+            cur.execute("SELECT institute_id FROM user WHERE id = %s", (created_by,))
+            r = cur.fetchone()
+            if r and r[0]:
+                inst_id = r[0]
+        if not inst_id:
+            inst_id = 1
+
         cur.execute("""
-
-            INSERT INTO session (session_name, session_code, expiry_time, created_by, class, latitude, longitude)
-
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-
-        """, (session_name, session_code, expiry_time_str, created_by, class_name, latitude, longitude))
+            INSERT INTO session (session_name, session_code, expiry_time, created_by, class, latitude, longitude, institute_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (session_name, session_code, expiry_time_str, created_by, class_name, latitude, longitude, inst_id))
 
 
 
@@ -956,9 +970,18 @@ def get_all_student():
 
             return jsonify({'message': 'User not authorized to view students.'}), 403 
 
-        # Fetch all students
+        # Multi-Institute Scoping: Fetch only students belonging to requester's institute
+        inst_id = get_auth_institute_id()
+        if not inst_id and request_id:
+            cur.execute("SELECT institute_id FROM user WHERE id = %s", (request_id,))
+            r = cur.fetchone()
+            if r and r[0]:
+                inst_id = r[0]
 
-        cur.execute("SELECT id, name, class, email, phone FROM student")
+        if inst_id:
+            cur.execute("SELECT id, name, class, email, phone FROM student WHERE institute_id = %s", (inst_id,))
+        else:
+            cur.execute("SELECT id, name, class, email, phone FROM student")
 
         students = cur.fetchall()
 
@@ -1490,9 +1513,18 @@ def get_sessions():
 
             return jsonify({'message': 'User not authorized to view sessions.'}), 403
 
-        # Fetch all sessions
+        # Multi-Institute Scoping: Fetch only sessions belonging to requester's institute
+        inst_id = get_auth_institute_id()
+        if not inst_id and id:
+            cur.execute("SELECT institute_id FROM user WHERE id = %s", (id,))
+            r = cur.fetchone()
+            if r and r[0]:
+                inst_id = r[0]
 
-        cur.execute("SELECT * FROM session")
+        if inst_id:
+            cur.execute("SELECT id, session_name, session_code, expiry_time, created_by, class, latitude, longitude FROM session WHERE institute_id = %s", (inst_id,))
+        else:
+            cur.execute("SELECT id, session_name, session_code, expiry_time, created_by, class, latitude, longitude FROM session")
 
         sessions = cur.fetchall()
 
@@ -1984,31 +2016,37 @@ def login_user():
 
         # Fetch the stored hash, id, and role based on email
 
-        cur.execute("SELECT id, role, password FROM user WHERE email=%s", (email,))
+        cur.execute("""
+            SELECT u.id, u.role, u.password, u.name, u.institute_id, i.name, i.code 
+            FROM user u
+            LEFT JOIN institute i ON i.id = u.institute_id
+            WHERE u.email=%s
+        """, (email,))
 
         user = cur.fetchone()
 
-
-
-        # Check if user exists AND if the password hash matches
-
         if user and check_password_hash(user[2], password):
-
             user_id = user[0]
-
             role = user[1]
-
-            
+            user_name = user[3]
+            institute_id = user[4] or 1
+            institute_name = user[5] or "Greenwood International School"
+            institute_code = user[6] or "GW-001"
 
             if role not in ('ADMIN', 'TEACHER'):
-
                 return jsonify({'message': 'Only admin or teacher can login!'}), 403
 
-            
-
-            token = generate_auth_token(user_id, role)
-
-            return jsonify({'message': 'Login successful!', 'user_id': user_id, 'role': role, 'token': token}), 200
+            token = generate_auth_token(user_id, role, name=user_name, institute_id=institute_id)
+            return jsonify({
+                'message': 'Login successful!',
+                'user_id': user_id,
+                'name': user_name,
+                'role': role,
+                'institute_id': institute_id,
+                'institute_name': institute_name,
+                'institute_code': institute_code,
+                'token': token
+            }), 200
 
         else:
 
@@ -2172,9 +2210,18 @@ def get_teachers():
 
             return jsonify({'message': 'Only admin can view teachers!'}), 403
 
-        # Fetch all teachers
+        # Multi-Institute Scoping: Fetch only teachers belonging to requester's institute
+        inst_id = get_auth_institute_id()
+        if not inst_id and request_id:
+            cur.execute("SELECT institute_id FROM user WHERE id = %s", (request_id,))
+            r = cur.fetchone()
+            if r and r[0]:
+                inst_id = r[0]
 
-        cur.execute("SELECT * FROM user WHERE role='TEACHER'")
+        if inst_id:
+            cur.execute("SELECT id, name, email, phone, password, role FROM user WHERE role='TEACHER' AND institute_id = %s", (inst_id,))
+        else:
+            cur.execute("SELECT id, name, email, phone, password, role FROM user WHERE role='TEACHER'")
 
         teachers=cur.fetchall()
 
@@ -2284,9 +2331,17 @@ def add_teacher():
 
         # FIX: Insert the new teacher with the hashed_password
 
-        cur.execute("INSERT INTO user (name, email, phone, password, role) VALUES (%s, %s, %s, %s, %s)", 
+        inst_id = data.get('institute_id') or get_auth_institute_id()
+        if not inst_id and request_id:
+            cur.execute("SELECT institute_id FROM user WHERE id = %s", (request_id,))
+            r = cur.fetchone()
+            if r and r[0]:
+                inst_id = r[0]
+        if not inst_id:
+            inst_id = 1
 
-                    (name, email, phone, hashed_password, 'TEACHER'))
+        cur.execute("INSERT INTO user (name, email, phone, password, role, institute_id) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (name, email, phone, hashed_password, 'TEACHER', inst_id))
 
         mysql.connection.commit()
 
@@ -2482,23 +2537,36 @@ def student_login():
 
             
 
+        inst_id = student[6] if len(student) > 6 and student[6] else 1
+        cur.execute("SELECT name, code FROM institute WHERE id = %s", (inst_id,))
+        inst_row = cur.fetchone()
+        inst_name = inst_row[0] if inst_row else "Greenwood International School"
+        inst_code = inst_row[1] if inst_row else "GW-001"
+
         result = {
-
             'id': student[0],
-
             'name': student[1],
-
             'class': student[2],
-
             'email': student[3],
-
-            'phone': student[4]
-
+            'phone': student[4],
+            'institute_id': inst_id,
+            'institute_name': inst_name,
+            'institute_code': inst_code
         }
 
-        token = generate_auth_token(student[0], 'STUDENT', name=student[1])
+        token = generate_auth_token(student[0], 'STUDENT', name=student[1], institute_id=inst_id)
 
-        return jsonify({'message': 'Login successful!', 'student': result, 'student_id': student[0], 'name': student[1], 'class': student[2], 'token': token}), 200
+        return jsonify({
+            'message': 'Login successful!',
+            'student': result,
+            'student_id': student[0],
+            'name': student[1],
+            'class': student[2],
+            'institute_id': inst_id,
+            'institute_name': inst_name,
+            'institute_code': inst_code,
+            'token': token
+        }), 200
 
         
 
@@ -2534,3 +2602,110 @@ if __name__ == '__main__':
 
     app.run(debug=True)
 
+
+
+# ==========================================
+# Multi-Institute Management Routes
+# ==========================================
+
+@app.route('/get_institutes', methods=['GET'])
+def get_institutes():
+    """Returns all registered institutes for selection or directory."""
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id, name, code, address, created_at FROM institute ORDER BY name ASC")
+        rows = cur.fetchall()
+        result = [
+            {
+                'id': r[0],
+                'name': r[1],
+                'code': r[2],
+                'address': r[3],
+                'created_at': str(r[4]) if r[4] else None
+            }
+            for r in rows
+        ]
+        return jsonify({'institutes': result, 'count': len(result)}), 200
+    except Exception as e:
+        app.logger.error(f"Error in get_institutes: {e}")
+        return jsonify({'message': 'Failed to retrieve institutes.'}), 500
+    finally:
+        if cur:
+            cur.close()
+
+
+@app.route('/register_institute', methods=['POST'])
+def register_institute():
+    """
+    Onboard a brand new Institute / School / College.
+    Creates the institute and an initial Admin account.
+    """
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    code = (data.get('code') or '').strip().upper()
+    address = (data.get('address') or '').strip()
+    admin_name = (data.get('admin_name') or '').strip()
+    admin_email = (data.get('admin_email') or '').strip()
+    admin_password = (data.get('admin_password') or '').strip()
+    admin_phone = (data.get('admin_phone') or '+91 0000000000').strip()
+
+    if not name or not code or not admin_email or not admin_password:
+        return jsonify({'message': 'Institute name, code, admin_email, and admin_password are required!'}), 400
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        # Check if code or email already exists
+        cur.execute("SELECT id FROM institute WHERE code = %s", (code,))
+        if cur.fetchone():
+            return jsonify({'message': f'Institute code "{code}" already exists!'}), 409
+
+        cur.execute("SELECT id FROM user WHERE email = %s", (admin_email,))
+        if cur.fetchone():
+            return jsonify({'message': f'Email "{admin_email}" is already registered!'}), 409
+
+        # Insert Institute
+        cur.execute("""
+            INSERT INTO institute (name, code, address)
+            VALUES (%s, %s, %s)
+        """, (name, code, address))
+        mysql.connection.commit()
+
+        # Retrieve new institute id
+        cur.execute("SELECT id FROM institute WHERE code = %s", (code,))
+        inst_id = cur.fetchone()[0]
+
+        # Insert Admin User
+        hashed_pw = generate_password_hash(admin_password)
+        cur.execute("""
+            INSERT INTO user (name, email, phone, password, role, institute_id)
+            VALUES (%s, %s, %s, %s, 'ADMIN', %s)
+        """, (admin_name or f"{name} Admin", admin_email, admin_phone, hashed_pw, inst_id))
+        mysql.connection.commit()
+
+        token = generate_auth_token(cur.lastrowid or 1, 'ADMIN', name=admin_name, institute_id=inst_id)
+
+        return jsonify({
+            'message': 'Institute registered successfully!',
+            'institute': {
+                'id': inst_id,
+                'name': name,
+                'code': code,
+                'address': address
+            },
+            'admin': {
+                'name': admin_name,
+                'email': admin_email,
+                'role': 'ADMIN'
+            },
+            'token': token
+        }), 201
+
+    except Exception as e:
+        app.logger.error(f"Error in register_institute: {e}")
+        mysql.connection.rollback()
+        return jsonify({'message': f'Failed to register institute: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()

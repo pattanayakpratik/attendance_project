@@ -65,8 +65,10 @@ export default function DashboardPage() {
               </div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Dashboard</h1>
               <p className="text-teal-100 dark:text-teal-200/80 text-sm mt-1 max-w-lg">
-                Welcome back, <span className="font-bold text-white">{user.name}</span>! Track
-                attendance in real-time using GPS Geofencing and Dynamic QR Codes.
+                Welcome back, <span className="font-bold text-white">{user.name}</span>
+                {user.institute_name && (
+                  <> • <span className="font-semibold text-emerald-300">{user.institute_name}</span></>
+                )}! Track attendance in real-time using GPS Geofencing and Dynamic QR Codes.
               </p>
             </div>
 

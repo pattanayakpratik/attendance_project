@@ -51,6 +51,9 @@ export default function LoginPage() {
         role: selectedRole,
         class: data.class || 'Class 10',
         token: data.token,
+        institute_id: data.institute_id,
+        institute_name: data.institute_name,
+        institute_code: data.institute_code,
       });
       router.push('/dashboard');
     } else {

@@ -9,12 +9,13 @@ serializer = URLSafeTimedSerializer(SECRET_KEY, salt='attendance-auth-salt')
 # Token validity: 7 days
 TOKEN_MAX_AGE = 86400 * 7
 
-def generate_auth_token(user_id, role, name=None):
-    """Generate a tamper-proof cryptographic token."""
+def generate_auth_token(user_id, role, name=None, institute_id=None):
+    """Generate a tamper-proof cryptographic token with multi-tenant institute scoping."""
     payload = {
         'user_id': user_id,
         'role': role,
-        'name': name
+        'name': name,
+        'institute_id': institute_id
     }
     return serializer.dumps(payload)
 
@@ -115,3 +116,41 @@ def get_auth_user_from_request():
             pass
 
     return None, None
+
+
+def get_auth_institute_id():
+    """
+    Extract institute_id from Authorization Bearer token, token param,
+    or JSON body / query string.
+    """
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        payload = verify_auth_token(token)
+        if payload and payload.get('institute_id'):
+            return payload.get('institute_id')
+
+    token = request.args.get('token')
+    if token:
+        payload = verify_auth_token(token)
+        if payload and payload.get('institute_id'):
+            return payload.get('institute_id')
+
+    raw_inst = request.args.get('institute_id')
+    if raw_inst is not None:
+        try:
+            return int(raw_inst)
+        except (ValueError, TypeError):
+            pass
+
+    if request.is_json:
+        try:
+            body = request.get_json(silent=True) or {}
+            raw_inst = body.get('institute_id')
+            if raw_inst is not None:
+                return int(raw_inst)
+        except Exception:
+            pass
+
+    return None
+
