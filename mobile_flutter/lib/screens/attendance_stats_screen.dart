@@ -76,7 +76,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
               Expanded(
                 child: ListView.separated(
                   itemCount: _classStats.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final item = _classStats[index];
                     return _buildStatCard(item);
@@ -108,7 +108,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: (isDark ? const Color(0xFF38B2AC) : AppColors.primary).withOpacity(0.3),
+                    color: (isDark ? const Color(0xFF38B2AC) : AppColors.primary).withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -139,7 +139,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
         border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -178,7 +178,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
             child: LinearProgressIndicator(
               value: percent,
               minHeight: 8,
-              backgroundColor: barColor.withOpacity(isDark ? 0.25 : 0.15),
+              backgroundColor: barColor.withValues(alpha: isDark ? 0.25 : 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),
@@ -198,7 +198,7 @@ class _AttendanceStatsScreenState extends State<AttendanceStatsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: barColor.withOpacity(isDark ? 0.25 : 0.12),
+                  color: barColor.withValues(alpha: isDark ? 0.25 : 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

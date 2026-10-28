@@ -122,7 +122,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
                   border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
+                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -158,7 +158,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
                           )
                         : ListView.separated(
                             itemCount: _filteredStudents.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (context, index) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final student = _filteredStudents[index];
                               return _buildStudentCard(student);
@@ -186,7 +186,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
         border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
