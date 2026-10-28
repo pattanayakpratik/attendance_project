@@ -1893,104 +1893,88 @@ def import_students():
 # register user
 
 @app.route('/register_user', methods=['POST'])
-
 def register_user():
-
-    data = request.get_json()
-
-    name = data.get('name')
-
-    email = data.get('email')
-
-    phone = data.get('phone')
-
-    password = data.get('password')
-
-    role = data.get('role')
-
-
-
-    # Validate inputs BEFORE hashing
+    """
+    User registration endpoint with strict Role-Based Access Control (RBAC):
+    - ADMIN accounts can ONLY be created by the SUPERADMIN (Platform Master Owner).
+    - TEACHER accounts can ONLY be created by an authenticated ADMIN of that institute.
+    - Public self-signup is strictly disabled.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    phone = (data.get('phone') or '').strip()
+    password = (data.get('password') or '').strip()
+    role = (data.get('role') or '').strip().upper()
 
     if not all([name, email, phone, password, role]):
-
-        return jsonify({'message': 'All fields are required!'}), 400
-
-    
-
-    if role not in ['ADMIN', 'TEACHER']:
-
-        return jsonify({'message': 'Invalid role!'}), 400
-
-
-
-    # Hash the password securely
-
-    hashed_password = generate_password_hash(password)
-
-
+        return jsonify({'message': 'All fields (name, email, phone, password, role) are required!'}), 400
 
     cur = None
-
     try:
-
         cur = mysql.connection.cursor()
 
-        
+        # Resolve requester role
+        requester_role = token_role
+        requester_inst_id = get_auth_institute_id()
+        if not requester_role and user_id:
+            cur.execute("SELECT role, institute_id FROM user WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            if r:
+                requester_role = r[0]
+                if not requester_inst_id:
+                    requester_inst_id = r[1]
 
-        # Check if user already exists
+        # Enforce Permissions
+        if role == 'ADMIN':
+            if requester_role != 'SUPERADMIN':
+                return jsonify({
+                    'message': 'Forbidden: Campus Admins cannot self-signup. They must be provisioned by the Platform Master Owner.'
+                }), 403
+        elif role == 'TEACHER':
+            if requester_role not in ('ADMIN', 'SUPERADMIN'):
+                return jsonify({
+                    'message': 'Forbidden: Teachers cannot self-signup. They must be enrolled by their Campus Admin.'
+                }), 403
+        else:
+            return jsonify({
+                'message': 'Forbidden: Public registration is disabled. Users and students must be enrolled by their institute administrator.'
+            }), 403
 
-        cur.execute("SELECT email FROM user WHERE email=%s", (email,))
+        # Check if email already exists
+        cur.execute("SELECT id FROM user WHERE email = %s", (email,))
+        if cur.fetchone():
+            return jsonify({'message': 'User already exists with this email!'}), 409
 
-        existing_user = cur.fetchone()
+        # Target institute_id
+        target_inst_id = data.get('institute_id') or requester_inst_id or 1
 
-        if existing_user:
-
-            return jsonify({'message': 'User already exists with this email, Try another one or login!'}), 400
-
-        
-
-        # Insert the new user with the HASHED password
-
+        hashed_password = generate_password_hash(password)
         cur.execute("""
-
-            INSERT INTO user (name, email, phone, password, role) 
-
-            VALUES (%s, %s, %s, %s, %s)
-
-        """, (name, email, phone, hashed_password, role))
-
-        
-
+            INSERT INTO user (name, email, phone, password, role, institute_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (name, email, phone, hashed_password, role, target_inst_id))
         mysql.connection.commit()
 
-        new_user_id = cur.lastrowid
+        new_id = cur.lastrowid
+        return jsonify({
+            'message': f'{role} registered successfully!',
+            'user_id': new_id,
+            'role': role,
+            'institute_id': target_inst_id
+        }), 201
 
-        return jsonify({'message': 'User registered successfully!', 'user_id': new_user_id}), 201
-
-
-
-    except MySQLdb.Error as e:
-
-        app.logger.error(f"Database error in register_user: {e}")
-
+    except Exception as e:
+        app.logger.error(f"Error in register_user: {e}")
         mysql.connection.rollback()
-
-        return jsonify({'message': 'Failed to register user due to a database error.'}), 500
-
+        return jsonify({'message': 'Failed to register user due to a server error.'}), 500
     finally:
-
         if cur:
-
             cur.close()
 
-    
 
-
-
-# login user
-
-@app.route('/login_user', methods=['POST'])
+@app.route('/login_user' , methods=['POST'])
 
 def login_user():
 
@@ -2639,8 +2623,31 @@ def get_institutes():
 def register_institute():
     """
     Onboard a brand new Institute / School / College.
-    Creates the institute and an initial Admin account.
+    Strictly restricted to the Platform Master Owner (SUPERADMIN).
     """
+    user_id, token_role = get_auth_user_from_request()
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        requester_role = token_role
+        if not requester_role and user_id:
+            cur.execute("SELECT role FROM user WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            if r:
+                requester_role = r[0]
+
+        if requester_role != 'SUPERADMIN':
+            return jsonify({
+                'message': 'Forbidden: Only the Platform Master Owner can onboard new institutes and assign campus administrators.'
+            }), 403
+    except Exception as e:
+        if cur:
+            cur.close()
+        return jsonify({'message': f'Authorization check failed: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
+
     data = request.get_json() or {}
     name = (data.get('name') or '').strip()
     code = (data.get('code') or '').strip().upper()
