@@ -627,7 +627,14 @@ def mark_attendance():
 
         expiry_time, session_lat, session_lng = result
 
-
+        if isinstance(expiry_time, str):
+            try:
+                expiry_time = datetime.strptime(expiry_time.split('.')[0], '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                try:
+                    expiry_time = datetime.fromisoformat(expiry_time)
+                except Exception:
+                    pass
 
         # 2. Check Expiry
 
