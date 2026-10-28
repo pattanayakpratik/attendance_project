@@ -347,7 +347,27 @@ class ResilientMySQL:
                 phone TEXT NOT NULL,
                 password TEXT NOT NULL,
                 institute_id INTEGER DEFAULT 1,
-                status TEXT DEFAULT 'ACTIVE'
+                status TEXT DEFAULT 'ACTIVE',
+                course TEXT,
+                batch TEXT,
+                semester TEXT
+            )
+        ''')
+
+        # 2b. Student Class History (Batch & Semester Progression)
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS student_class_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                institute_id INTEGER NOT NULL,
+                course TEXT,
+                batch TEXT,
+                semester TEXT,
+                class_name TEXT NOT NULL,
+                academic_year TEXT,
+                status TEXT DEFAULT 'ACTIVE',
+                promoted_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                promoted_by INTEGER
             )
         ''')
 
