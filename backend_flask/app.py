@@ -368,43 +368,34 @@ def add_session():
         if not inst_id:
             inst_id = 1
 
+        now_dt = datetime.now()
+        start_time_str = (data.get('start_time') or now_dt.strftime('%Y-%m-%d %H:%M:%S')).strip()
+        end_time_str = (data.get('end_time') or expiry_time_str).strip()
+
         cur.execute("""
-            INSERT INTO session (session_name, session_code, expiry_time, created_by, class, latitude, longitude, institute_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (session_name, session_code, expiry_time_str, created_by, class_name, latitude, longitude, inst_id))
-
-
+            INSERT INTO session (session_name, session_code, expiry_time, created_by, class, latitude, longitude, institute_id, start_time, end_time, created_at, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'ACTIVE')
+        """, (session_name, session_code, expiry_time_str, created_by, class_name, latitude, longitude, inst_id, start_time_str, end_time_str, now_dt.strftime('%Y-%m-%d %H:%M:%S')))
 
         mysql.connection.commit()
-
         session_id_server = cur.lastrowid 
 
-
-
-    except MySQLdb.Error as e:
-
+    except Exception as e:
         app.logger.error(f"Database error in add_session: {e}")
-
         mysql.connection.rollback()
-
-        return jsonify({'message': 'Failed to add session due to a database error.'}), 500
-
+        return jsonify({'message': f'Failed to add session: {str(e)}'}), 500
     finally:
-
         if cur:
-
             cur.close()
 
-
-
     return jsonify({
-
         "message": "Session added successfully!",
-
         "session_id": session_id_server,
-
-        "session_code": session_code
-
+        "session_code": session_code,
+        "start_time": start_time_str,
+        "end_time": end_time_str,
+        "expiry_time": expiry_time_str,
+        "status": "ACTIVE"
     }), 201
 
 
@@ -1561,48 +1552,79 @@ def get_sessions():
                 inst_id = r[0]
 
         if inst_id:
-            cur.execute("SELECT id, session_name, session_code, expiry_time, created_by, class, latitude, longitude FROM session WHERE institute_id = %s", (inst_id,))
+            cur.execute("""
+                SELECT s.id, s.session_name, s.session_code, s.expiry_time, s.created_by, s.class, 
+                       s.latitude, s.longitude, COALESCE(s.start_time, s.created_at, s.expiry_time),
+                       COALESCE(s.end_time, s.expiry_time), s.created_at, COALESCE(s.status, 'ACTIVE'),
+                       u.name
+                FROM session s
+                LEFT JOIN user u ON s.created_by = u.id
+                WHERE s.institute_id = %s
+                ORDER BY s.id DESC
+            """, (inst_id,))
         else:
-            cur.execute("SELECT id, session_name, session_code, expiry_time, created_by, class, latitude, longitude FROM session")
+            cur.execute("""
+                SELECT s.id, s.session_name, s.session_code, s.expiry_time, s.created_by, s.class, 
+                       s.latitude, s.longitude, COALESCE(s.start_time, s.created_at, s.expiry_time),
+                       COALESCE(s.end_time, s.expiry_time), s.created_at, COALESCE(s.status, 'ACTIVE'),
+                       u.name
+                FROM session s
+                LEFT JOIN user u ON s.created_by = u.id
+                ORDER BY s.id DESC
+            """)
 
         sessions = cur.fetchall()
 
         if not sessions:
-
             return jsonify({'session_count': 0, 'sessions': []}), 200
 
-        # Format the session data
-
+        now_dt = datetime.now()
         result = []
 
         for row in sessions:
+            start_str = str(row[8]) if row[8] else ""
+            end_str = str(row[9]) if row[9] else str(row[3])
+            db_status = (row[11] or 'ACTIVE').upper()
+            
+            # Check expiry
+            computed_status = db_status
+            if db_status != 'COMPLETED':
+                try:
+                    exp_val = row[3]
+                    exp_dt = exp_val if isinstance(exp_val, datetime) else datetime.strptime(str(exp_val)[:19], '%Y-%m-%d %H:%M:%S')
+                    if now_dt > exp_dt:
+                        computed_status = 'EXPIRED'
+                    else:
+                        computed_status = 'ACTIVE'
+                except Exception:
+                    pass
 
-            # get creater name for more clarity
-
-            create=row[4]
-
-            cur.execute("SELECT name FROM user WHERE id = %s", (create,))
-
-            created_by = cur.fetchone()
-
-            creator_name = created_by[0] if created_by else "Unknown"
+            duration_mins = 45
+            try:
+                if row[8] and row[9]:
+                    st_val = row[8]
+                    et_val = row[9]
+                    st_dt = st_val if isinstance(st_val, datetime) else datetime.strptime(str(st_val)[:19], '%Y-%m-%d %H:%M:%S')
+                    et_dt = et_val if isinstance(et_val, datetime) else datetime.strptime(str(et_val)[:19], '%Y-%m-%d %H:%M:%S')
+                    duration_mins = max(1, int((et_dt - st_dt).total_seconds() / 60))
+            except Exception:
+                pass
 
             result.append({
-
                 'id': row[0],
-
                 'session_name': row[1],
-
                 'session_code': row[2],
-
                 'expiry_time': str(row[3]),
-
                 'created_by': row[4],
-
-                'created_by_name': creator_name,
-
+                'created_by_name': row[12] or "Unknown",
                 'class': row[5],
-
+                'latitude': row[6],
+                'longitude': row[7],
+                'start_time': start_str,
+                'end_time': end_str,
+                'created_at': str(row[10]) if row[10] else start_str,
+                'duration_minutes': duration_mins,
+                'status': computed_status
             })
 
         return jsonify({'session_count': len(result), 'sessions': result}), 200
@@ -1622,6 +1644,45 @@ def get_sessions():
             
 
 # get specific session's attendance
+
+@app.route('/end_session', methods=['POST'])
+def end_session():
+    """
+    Manually close an active session (e.g. class finished early).
+    Locks attendance and records exact end timestamp.
+    """
+    user_id, token_role = get_auth_user_from_request()
+    data = request.get_json() or {}
+    session_id = data.get('session_id')
+    if not session_id:
+        return jsonify({'message': 'session_id is required!'}), 400
+
+    cur = None
+    try:
+        cur = mysql.connection.cursor()
+        now_dt = datetime.now()
+        now_str = now_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        cur.execute("""
+            UPDATE session 
+            SET end_time = %s, expiry_time = %s, status = 'COMPLETED'
+            WHERE id = %s
+        """, (now_str, now_str, int(session_id)))
+        mysql.connection.commit()
+
+        return jsonify({
+            'message': 'Session ended successfully. Attendance is now finalized and locked.',
+            'session_id': session_id,
+            'end_time': now_str,
+            'status': 'COMPLETED'
+        }), 200
+    except Exception as e:
+        app.logger.error(f"Error in end_session: {e}")
+        mysql.connection.rollback()
+        return jsonify({'message': f'Failed to end session: {str(e)}'}), 500
+    finally:
+        if cur:
+            cur.close()
 
 @app.route('/get_session_attendance', methods=['GET'])
 
