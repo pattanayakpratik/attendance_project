@@ -112,6 +112,16 @@ export default function SessionsPage() {
   useEffect(() => {
     setCurrentTime(Date.now());
     fetchSessions();
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const qClass = params.get('class');
+      const qSubject = params.get('subject');
+      const qOpen = params.get('openModal');
+      if (qClass) setNewClass(qClass);
+      if (qSubject) setNewSessionName(qSubject);
+      if (qOpen === '1') setShowCreateModal(true);
+    }
   }, []);
 
   useEffect(() => {

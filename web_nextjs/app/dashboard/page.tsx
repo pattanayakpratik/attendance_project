@@ -15,6 +15,7 @@ import {
   Clock,
   MapPin,
   ArrowUpRight,
+  CalendarDays,
 } from 'lucide-react';
 import { getSavedUser, apiRequest, UserSession } from '@/lib/api';
 
@@ -72,7 +73,14 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link
+                href="/timetable"
+                className="inline-flex items-center gap-2 px-5 py-3.5 bg-white/15 dark:bg-white/10 hover:bg-white/25 text-white font-bold text-sm rounded-2xl border border-white/20 transition transform hover:-translate-y-0.5"
+              >
+                <CalendarDays className="w-4 h-4 text-teal-200" />
+                <span>Schedule & Timetable</span>
+              </Link>
               <Link
                 href="/sessions"
                 className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-white dark:bg-teal-500 text-[#2D8885] dark:text-[#0D2024] font-bold text-sm rounded-2xl shadow-lg hover:bg-teal-50 dark:hover:bg-teal-400 transition transform hover:-translate-y-0.5"
@@ -84,31 +92,57 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 2x2 Grid of Actions matching Screen 2 in the design mockup */}
+        {/* Action Grid */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Quick Navigation</h2>
             <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">Core Modules</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* 1. Admin / Sessions Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* 1. Timetable Card */}
             <Link
-              href="/sessions"
-              className="group bg-white dark:bg-[#132429] p-6 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
+              href="/timetable"
+              className="group bg-white dark:bg-[#132429] p-5 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
             >
               <div>
-                <div className="w-14 h-14 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
-                  <User className="w-7 h-7" />
+                <div className="w-12 h-12 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
+                  <CalendarDays className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-5 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mt-4 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
+                  {user.role === 'STUDENT' ? 'My Timetable' : user.role === 'TEACHER' ? 'Teaching Schedule' : 'Timetable Master'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                  {user.role === 'STUDENT'
+                    ? 'Check daily lectures and class schedule.'
+                    : user.role === 'TEACHER'
+                    ? 'View your teaching schedule and start QR sessions.'
+                    : 'Manage timetables across all classes and teachers.'}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
+                <span>View Schedule</span>
+                <ArrowUpRight className="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
+              </div>
+            </Link>
+
+            {/* 2. Admin / Sessions Card */}
+            <Link
+              href="/sessions"
+              className="group bg-white dark:bg-[#132429] p-5 rounded-3xl border border-slate-200/80 dark:border-[#1E373E] shadow-sm hover:shadow-xl hover:border-teal-300 dark:hover:border-teal-500/60 transition-all duration-300 flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#E7F3F2] dark:bg-[#1A343B] flex items-center justify-center text-[#2D8885] dark:text-teal-300 group-hover:scale-110 transition duration-300">
+                  <User className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mt-4 group-hover:text-[#2D8885] dark:group-hover:text-teal-300 transition">
                   Admin & Sessions
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                   Manage class sessions, set geofence radius, and project QR codes.
                 </p>
               </div>
-              <div className="mt-5 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
+              <div className="mt-4 flex items-center justify-between text-xs font-semibold text-[#2D8885] dark:text-teal-400">
                 <span>View Sessions</span>
                 <ArrowUpRight className="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
               </div>

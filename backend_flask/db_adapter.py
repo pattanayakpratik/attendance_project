@@ -128,7 +128,7 @@ class PostgresCursorWrapper:
         is_insert = q.strip().upper().startswith('INSERT')
         has_returning = 'RETURNING' in q.upper()
 
-        if is_insert and not has_returning and ('"user"' in q or 'session' in q or 'attendance' in q):
+        if is_insert and not has_returning and ('"user"' in q or 'session' in q or 'attendance' in q or 'timetable' in q):
             mod_q = q.rstrip().rstrip(';') + ' RETURNING id;'
             try:
                 res = self._cur.execute(mod_q, params) if params is not None else self._cur.execute(mod_q)
@@ -398,6 +398,22 @@ class ResilientMySQL:
                 session_id INTEGER NOT NULL,
                 status TEXT NOT NULL,
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # 5. Timetable Table
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS timetable (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                institute_id INTEGER DEFAULT 1,
+                class_name TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                teacher_id INTEGER NOT NULL,
+                day_of_week TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                room_number TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
 
