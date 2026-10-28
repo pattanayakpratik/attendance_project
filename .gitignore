@@ -1,0 +1,40 @@
+# General
+.DS_Store
+*.log
+.env
+.env.local
+*.swp
+*.bak
+.vscode/
+bin/
+*.exe
+
+# Backend (Python / Flask)
+backend_flask/.venv/
+backend_flask/__pycache__/
+backend_flask/*.pyc
+backend_flask/*.db
+backend_flask/instance/
+backend_flask/.pytest_cache/
+
+# Frontend Web (Next.js)
+web_nextjs/node_modules/
+web_nextjs/.next/
+web_nextjs/out/
+web_nextjs/build/
+web_nextjs/.turbo/
+web_nextjs/npm-debug.log*
+
+# Mobile App (Flutter / Dart)
+mobile_flutter/.dart_tool/
+mobile_flutter/.flutter-plugins
+mobile_flutter/.flutter-plugins-dependencies
+mobile_flutter/.packages
+mobile_flutter/build/
+mobile_flutter/android/.gradle/
+mobile_flutter/android/app/build/
+mobile_flutter/ios/Pods/
+mobile_flutter/ios/.symlinks/
+mobile_flutter/ios/Flutter/Flutter.framework
+mobile_flutter/ios/Flutter/Flutter.podspec
+mobile_flutter/windows/flutter/ephemeral/
