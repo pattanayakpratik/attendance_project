@@ -123,7 +123,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                   border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
+                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -159,7 +159,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                           )
                         : ListView.separated(
                             itemCount: _filteredSessions.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 14),
+                            separatorBuilder: (context, index) => const SizedBox(height: 14),
                             itemBuilder: (context, index) {
                               final session = _filteredSessions[index];
                               return _buildSessionCard(session);
@@ -196,7 +196,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
         border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -223,7 +223,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 decoration: BoxDecoration(
                   color: isOpen
                       ? (isDark ? const Color(0xFF1A343B) : AppColors.primaryLight)
-                      : (isDark ? const Color(0xFF1A262A) : Colors.grey.withOpacity(0.15)),
+                      : (isDark ? const Color(0xFF1A262A) : Colors.grey.withValues(alpha: 0.15)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

@@ -50,7 +50,7 @@ class DashboardScreen extends StatelessWidget {
           IconButton(
             icon: CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
               child: const Icon(Icons.person, color: Colors.white, size: 20),
             ),
             onPressed: () {
@@ -73,7 +73,7 @@ class DashboardScreen extends StatelessWidget {
               Text(
                 'Welcome, ${user.name}',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                 ),
@@ -170,7 +170,7 @@ class DashboardScreen extends StatelessWidget {
     final isDark = AppColors.isDark(context);
 
     return Material(
-      color: isDark ? const Color(0xFF132429) : AppColors.primarySoft.withOpacity(0.4),
+      color: isDark ? const Color(0xFF132429) : AppColors.primarySoft.withValues(alpha: 0.4),
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,

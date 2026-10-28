@@ -45,7 +45,9 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
     );
     setState(() => _isLoading = false);
 
-    if (mounted && res['success']) {
+    if (!mounted) return;
+
+    if (res['success']) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.primaryColor(context),
@@ -150,7 +152,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
         border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),

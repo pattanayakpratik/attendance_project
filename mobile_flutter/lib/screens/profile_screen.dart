@@ -81,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 46,
-                      backgroundColor: Colors.white.withOpacity(0.9),
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
                       child: CircleAvatar(
                         radius: 42,
                         backgroundColor: isDark ? const Color(0xFF162B31) : AppColors.primaryLight,
@@ -101,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -128,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
                       blurRadius: 15,
                       offset: const Offset(0, 4),
                     ),
@@ -151,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF132429) : Colors.white.withOpacity(0.18),
+                  color: isDark ? const Color(0xFF132429) : Colors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(20),
                   border: isDark ? Border.all(color: const Color(0xFF1E373E)) : null,
                 ),
@@ -178,7 +178,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     Switch.adaptive(
                       value: _isDarkMode,
-                      activeColor: Colors.white,
                       activeTrackColor: AppColors.scannerTeal,
                       onChanged: (val) async {
                         setState(() => _isDarkMode = val);

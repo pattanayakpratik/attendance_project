@@ -149,7 +149,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 shape: BoxShape.circle,
                 color: isSuccess
                     ? AppColors.primaryLight
-                    : (isWarning ? Colors.orange.withOpacity(0.15) : AppColors.absentCoral.withOpacity(0.15)),
+                    : (isWarning ? Colors.orange.withValues(alpha: 0.15) : AppColors.absentCoral.withValues(alpha: 0.15)),
               ),
               child: Icon(
                 isSuccess
@@ -224,7 +224,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               left: 16,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
@@ -240,7 +240,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               right: 16,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
@@ -310,7 +310,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     _statusMessage ?? 'Align QR code inside frame + GPS verified',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 13,
                     ),
                   ),
