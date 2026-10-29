@@ -8,7 +8,7 @@ class StorageService {
   static const String _darkModeKey = 'dark_mode';
 
   // Default server URL. For Android emulator: 10.0.2.2, for physical phone / web: local LAN IP or 127.0.0.1
-  static const String defaultUrl = 'http://10.0.2.2:5000';
+  static const String defaultUrl = String.fromEnvironment('API_URL', defaultValue: 'https://attendance-project-i2yh.onrender.com');
 
   static Future<void> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
