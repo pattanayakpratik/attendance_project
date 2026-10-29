@@ -4,9 +4,27 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter)](https://flutter.dev/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
 [![Supabase PostgreSQL](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-smartcampus--attendance-black?style=for-the-badge&logo=vercel)](https://smartcampus-attendance.vercel.app)
+[![Render](https://img.shields.io/badge/Render-API%20Live-46E3B7?style=for-the-badge&logo=render)](https://attendance-project-i2yh.onrender.com)
+[![Download APK](https://img.shields.io/badge/Download-Android%20APK-3DDC84?style=for-the-badge&logo=android)](https://github.com/pattanayakpratik/attendance_project/releases/tag/v1.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg?style=for-the-badge)](LICENSE)
 
 An enterprise-ready, cross-platform institutional attendance and timetable management ecosystem. Engineered with **Dynamic QR Code Projection**, **GPS Geofencing radius verification**, a **Fixed Weekly Timetable Matrix** with recess and lunch breaks, and **Multi-Tenant Campus Isolation** supporting Colleges, K-12 Schools, and Private Tuitions/Bootcamps.
+
+---
+
+## 🌐 Live Cloud Endpoints & 📱 Mobile App Download
+
+| Component | Platform | Live URL / Access | Status |
+|---|---|---|---|
+| **Web Dashboard** | **Vercel** | [smartcampus-attendance.vercel.app](https://smartcampus-attendance.vercel.app) | 🟢 Live (Production) |
+| **Alternative Web Domain** | **Vercel** | [attendancepro-live.vercel.app](https://attendancepro-live.vercel.app) | 🟢 Live |
+| **Backend REST API** | **Render** | [attendance-project-i2yh.onrender.com](https://attendance-project-i2yh.onrender.com) | 🟢 Live (Gunicorn) |
+| **Cloud Database** | **Supabase PostgreSQL** | Pooled cloud connection with multi-tenant isolation | 🟢 Active |
+| **Android Release APK** | **GitHub Release** | [⬇️ Download smart-campus-attendance-v1.0.0.apk](https://github.com/pattanayakpratik/attendance_project/releases/download/v1.0.0/smart-campus-attendance-v1.0.0.apk) | 🚀 Release [v1.0.0](https://github.com/pattanayakpratik/attendance_project/releases/tag/v1.0.0) |
+
+> [!NOTE]
+> The Render free web service spins down after inactivity. The first API request after inactivity may take ~30–50 seconds to wake up the service.
 
 ---
 
